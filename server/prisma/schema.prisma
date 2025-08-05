@@ -34,6 +34,7 @@ model Post {
   scheduledAt DateTime
   status      PostStatus  @default(DRAFT)
   platform    Platform
+  postType    PostType    @default(FEED) // Novo campo para tipo de post
   mediaUrls   String[]    // Array de URLs de imagens/vídeos
   hashtags    String[]    // Array de hashtags
   authorId    String
@@ -116,4 +117,12 @@ enum Platform {
   LINKEDIN
   TIKTOK
   YOUTUBE
+}
+
+enum PostType {
+  FEED      // Post normal do feed
+  STORY     // Story (24h)
+  REELS     // Reels/Vídeos curtos
+  IGTV      // IGTV/Vídeos longos
+  CAROUSEL  // Carrossel de múltiplas imagens
 }
