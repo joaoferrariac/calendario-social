@@ -51,31 +51,96 @@ async function main() {
   // Criar posts de exemplo
   const posts = [
     {
-      title: 'Lançamento do novo produto',
-      content: 'Estamos empolgados em apresentar nossa mais nova inovação! 🚀',
+      title: 'Novo produto revolucionário',
+      content: 'Estamos empolgados em apresentar nossa mais nova inovação! Depois de meses de desenvolvimento, finalmente chegou o momento de compartilhar com vocês. 🚀✨',
       scheduledAt: new Date('2025-08-10T09:00:00Z'),
       platform: 'INSTAGRAM',
-      hashtags: ['#inovacao', '#produto', '#lancamento'],
+      postType: 'FEED',
+      mediaUrls: ['https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400'],
+      hashtags: ['inovacao', 'produto', 'lancamento', 'tecnologia', 'startup'],
       authorId: editor.id,
       status: 'SCHEDULED'
     },
     {
-      title: 'Dica de segunda-feira',
-      content: 'Comece a semana com energia positiva! ✨',
+      title: 'Story motivacional',
+      content: 'Comece a semana com energia positiva!',
       scheduledAt: new Date('2025-08-05T07:00:00Z'),
-      platform: 'FACEBOOK',
-      hashtags: ['#motivacao', '#segunda', '#positividade'],
+      platform: 'INSTAGRAM',
+      postType: 'STORY',
+      mediaUrls: ['https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400'],
+      hashtags: ['motivacao', 'segunda', 'positividade'],
       authorId: editor.id,
       status: 'DRAFT'
     },
     {
-      title: 'Behind the scenes',
-      content: 'Nos bastidores do nosso escritório criativo 🎨',
+      title: 'Reels da semana',
+      content: 'Nos bastidores do nosso processo criativo! Vem ver como fazemos a mágica acontecer 🎨🎬',
       scheduledAt: new Date('2025-08-12T15:30:00Z'),
-      platform: 'LINKEDIN',
-      hashtags: ['#trabalho', '#criatividade', '#equipe'],
+      platform: 'INSTAGRAM',
+      postType: 'REELS',
+      mediaUrls: ['https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400'],
+      hashtags: ['bastidores', 'criatividade', 'equipe', 'processo', 'reels'],
       authorId: admin.id,
       status: 'SCHEDULED'
+    },
+    {
+      title: 'Carrossel de dicas',
+      content: '5 dicas essenciais para aumentar sua produtividade no trabalho! Deslize para ver todas 👆',
+      scheduledAt: new Date('2025-08-08T14:00:00Z'),
+      platform: 'INSTAGRAM',
+      postType: 'CAROUSEL',
+      mediaUrls: [
+        'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=400',
+        'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400',
+        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400'
+      ],
+      hashtags: ['produtividade', 'dicas', 'trabalho', 'foco', 'carrossel'],
+      authorId: editor.id,
+      status: 'PUBLISHED'
+    },
+    {
+      title: 'Novidades LinkedIn',
+      content: 'Compartilhando nossa jornada empresarial e as lições aprendidas ao longo do caminho. A transparência é fundamental para construir confiança com nossa comunidade.',
+      scheduledAt: new Date('2025-08-09T10:00:00Z'),
+      platform: 'LINKEDIN',
+      postType: 'FEED',
+      mediaUrls: ['https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400'],
+      hashtags: ['negocios', 'transparencia', 'lideranca', 'crescimento'],
+      authorId: admin.id,
+      status: 'SCHEDULED'
+    },
+    {
+      title: 'Momento inspirador',
+      content: 'Sexta-feira é dia de celebrar as conquistas da semana! 🎉 Qual foi sua maior vitória?',
+      scheduledAt: new Date('2025-08-09T18:00:00Z'),
+      platform: 'FACEBOOK',
+      postType: 'FEED',
+      mediaUrls: ['https://images.unsplash.com/photo-1492472584521-8b97bc9d8e15?w=400'],
+      hashtags: ['sexta', 'conquistas', 'celebracao', 'vitoria'],
+      authorId: editor.id,
+      status: 'DRAFT'
+    },
+    {
+      title: 'Tutorial rápido',
+      content: 'Como fazer um café perfeito em 60 segundos! ☕️ Salvem esse vídeo para não esquecer',
+      scheduledAt: new Date('2025-08-11T08:30:00Z'),
+      platform: 'INSTAGRAM',
+      postType: 'REELS',
+      mediaUrls: ['https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=400'],
+      hashtags: ['cafe', 'tutorial', 'dica', 'manha', 'rotina'],
+      authorId: admin.id,
+      status: 'PUBLISHED'
+    },
+    {
+      title: 'Equipe unida',
+      content: 'Nosso time é nossa maior força! Juntos somos imparáveis 💪 #TeamWork',
+      scheduledAt: new Date('2025-08-07T16:00:00Z'),
+      platform: 'INSTAGRAM',
+      postType: 'FEED',
+      mediaUrls: ['https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400'],
+      hashtags: ['equipe', 'trabalho', 'unidos', 'forca', 'time'],
+      authorId: editor.id,
+      status: 'PUBLISHED'
     }
   ];
 
