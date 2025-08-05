@@ -10,7 +10,9 @@
 		"lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
 		"setup": "npm install && cd server && npm install && cd ..",
 		"start:dev": "concurrently \"cd server && npm run dev\" \"npm run dev\"",
-		"build:prod": "npm run build && cd server && npm run build"
+		"build:prod": "npm run build && cd server && npm run build",
+		"start": "cd server && node index.js",
+		"postinstall": "cd server && npm install && npx prisma generate"
 	},
 	"dependencies": {
 		"@radix-ui/react-alert-dialog": "^1.0.5",
