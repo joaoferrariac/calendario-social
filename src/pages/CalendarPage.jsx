@@ -5,7 +5,7 @@ import Layout from '@/components/Layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import CalendarGrid from '@/components/CalendarGrid';
-import PostEditor from '@/components/PostEditor';
+import PostEditorSimple from '@/components/PostEditorSimple';
 import MediaUploader from '@/components/MediaUploader';
 import { useToast } from '@/components/ui/use-toast';
 import api from '@/lib/api';
@@ -263,7 +263,7 @@ const CalendarPage = () => {
         {/* Modals */}
         <AnimatePresence>
           {showEditor && (
-            <PostEditor
+            <PostEditorSimple
               post={editingPost}
               selectedDate={selectedDate}
               onClose={() => setShowEditor(false)}

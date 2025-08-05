@@ -30,12 +30,21 @@ const storage = multer.diskStorage({
 
 // Filtro para tipos de arquivo aceitos
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  const allowedTypes = [
+    'image/jpeg', 
+    'image/jpg', 
+    'image/png', 
+    'image/gif', 
+    'image/webp',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm'
+  ];
   
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Tipo de arquivo não permitido. Use apenas JPG, PNG, GIF ou WebP.'), false);
+    cb(new Error('Tipo de arquivo não permitido. Use apenas JPG, PNG, GIF, WebP, MP4, MOV ou WebM.'), false);
   }
 };
 
@@ -43,7 +52,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
+    fileSize: 50 * 1024 * 1024 // 50MB para suportar vídeos
   }
 });
 
