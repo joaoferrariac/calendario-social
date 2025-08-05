@@ -1,0 +1,14 @@
+{
+  "name": "calendario-social",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "cd server && npm start",
+    "build": "cd server && npm install && npx prisma generate",
+    "dev": "cd server && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
