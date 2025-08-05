@@ -8,7 +8,7 @@ import CalendarGrid from '@/components/CalendarGrid';
 import PostEditor from '@/components/PostEditor';
 import MediaUploader from '@/components/MediaUploader';
 import { useToast } from '@/components/ui/use-toast';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 
 const CalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
