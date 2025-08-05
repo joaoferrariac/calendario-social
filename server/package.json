@@ -41,5 +41,8 @@
     "neon"
   ],
   "author": "Seu Nome",
-  "license": "MIT"
+  "license": "MIT",
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
 }
