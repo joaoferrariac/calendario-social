@@ -1,6 +1,6 @@
-# 📱 Calendário Social - Sistema Completo de Gerenciamento de Postagens
+# 📱 Projeto MLabs - Sistema de Gestão de Redes Sociais
 
-Um sistema moderno e completo para gerenciar calendário de postagens para redes sociais, construído com React, Node.js e banco de dados PostgreSQL.
+Sistema completo de gestão de conteúdo para redes sociais com design inspirado no Instagram/MLabs, desenvolvido com React, Node.js e MongoDB.
 
 ## 🚀 Funcionalidades
 

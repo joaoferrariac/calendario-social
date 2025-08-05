@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import connectDB from './config/database.js';
 
 // Importar rotas
 import authRoutes from './routes/auth.js';
@@ -14,8 +14,10 @@ import mediaRoutes from './routes/media.js';
 // Configurações
 dotenv.config();
 const app = express();
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
+
+// Conectar ao MongoDB
+connectDB();
 
 // Middlewares de segurança
 app.use(helmet({
@@ -59,12 +61,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Middleware para adicionar Prisma ao request
-app.use((req, res, next) => {
-  req.prisma = prisma;
-  next();
-});
-
 // Middleware de log
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -90,15 +86,22 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Erro:', err);
   
-  if (err.code === 'P2002') {
+  // Erros do MongoDB
+  if (err.code === 11000) {
     return res.status(400).json({
       error: 'Dados duplicados. Este registro já existe.'
     });
   }
   
-  if (err.code === 'P2025') {
+  if (err.name === 'CastError') {
     return res.status(404).json({
       error: 'Registro não encontrado.'
+    });
+  }
+  
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: err.message
     });
   }
   
@@ -119,13 +122,11 @@ app.use('*', (req, res) => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('🛑 Encerrando servidor...');
-  await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('🛑 Encerrando servidor...');
-  await prisma.$disconnect();
   process.exit(0);
 });
 
