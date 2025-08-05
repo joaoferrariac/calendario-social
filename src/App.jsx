@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import useAuthStore from '@/lib/authStore';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Páginas
 import LoginPage from '@/pages/LoginPage';
@@ -90,7 +91,9 @@ function App() {
             path="/posts" 
             element={
               <ProtectedRoute>
-                <PostsPage />
+                <ErrorBoundary>
+                  <PostsPage />
+                </ErrorBoundary>
               </ProtectedRoute>
             } 
           />

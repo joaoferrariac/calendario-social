@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout/Layout';
 import api from '@/lib/api';
 
-const PostsPage = () => {
+const PostsPageFuncional = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -167,4 +167,4 @@ const PostsPage = () => {
   );
 };
 
-export default PostsPage;
+export default PostsPageFuncional;

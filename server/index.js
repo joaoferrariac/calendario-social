@@ -9,7 +9,7 @@ import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import postRoutes from './routes/posts.js';
 import userRoutes from './routes/users.js';
-import mediaRoutes from './routes/media.js';
+// import mediaRoutes from './routes/media.js'; // Temporariamente desabilitado
 
 // Configurações
 dotenv.config();
@@ -71,7 +71,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/media', mediaRoutes);
+// app.use('/api/media', mediaRoutes); // Temporariamente desabilitado
 
 // Rota de health check
 app.get('/api/health', (req, res) => {
