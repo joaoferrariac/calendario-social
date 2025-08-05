@@ -5,7 +5,9 @@
 	"private": true,
 	"scripts": {
 		"dev": "vite",
-		"build": "echo 'Frontend build skipped for Railway'",
+		"build": "node tools/generate-llms.js || true && vite build",
+		"build:netlify": "node tools/generate-llms.js || true && vite build",
+		"build:railway": "echo 'Frontend build skipped for Railway'",
 		"preview": "vite preview",
 		"lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
 		"setup": "npm install && cd server && npm install && cd ..",
