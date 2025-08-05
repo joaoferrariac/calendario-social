@@ -1,0 +1,436 @@
+import express from 'express';
+import { z } from 'zod';
+import { authMiddleware, requireRole } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Schema de validação
+const createPostSchema = z.object({
+  title: z.string().min(1, 'Título é obrigatório'),
+  content: z.string().optional(),
+  scheduledAt: z.string().datetime('Data inválida'),
+  platform: z.enum(['INSTAGRAM', 'FACEBOOK', 'TWITTER', 'LINKEDIN', 'TIKTOK', 'YOUTUBE']),
+  hashtags: z.array(z.string()).optional().default([]),
+  mediaUrls: z.array(z.string().url()).optional().default([])
+});
+
+const updatePostSchema = createPostSchema.partial().extend({
+  status: z.enum(['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED']).optional()
+});
+
+// Listar posts com filtros
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      platform,
+      author,
+      startDate,
+      endDate,
+      search
+    } = req.query;
+
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const offset = (pageNumber - 1) * limitNumber;
+
+    // Construir filtros
+    const where = {};
+
+    if (status) where.status = status;
+    if (platform) where.platform = platform;
+    if (author) where.authorId = author;
+
+    if (startDate || endDate) {
+      where.scheduledAt = {};
+      if (startDate) where.scheduledAt.gte = new Date(startDate);
+      if (endDate) where.scheduledAt.lte = new Date(endDate);
+    }
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { content: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Se não for admin, só ver próprios posts
+    if (req.user.role !== 'ADMIN') {
+      where.authorId = req.user.id;
+    }
+
+    const [posts, total] = await Promise.all([
+      req.prisma.post.findMany({
+        where,
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar: true
+            }
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true
+            }
+          }
+        },
+        orderBy: { scheduledAt: 'asc' },
+        skip: offset,
+        take: limitNumber
+      }),
+      req.prisma.post.count({ where })
+    ]);
+
+    res.json({
+      posts,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        total,
+        pages: Math.ceil(total / limitNumber)
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao listar posts:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Buscar post por ID
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const where = { id };
+    
+    // Se não for admin, só ver próprios posts
+    if (req.user.role !== 'ADMIN') {
+      where.authorId = req.user.id;
+    }
+
+    const post = await req.prisma.post.findFirst({
+      where,
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true
+          }
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        _count: {
+          select: {
+            likes: true,
+            comments: true
+          }
+        }
+      }
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post não encontrado' });
+    }
+
+    res.json(post);
+  } catch (error) {
+    console.error('Erro ao buscar post:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Criar post
+router.post('/', authMiddleware, requireRole(['ADMIN', 'EDITOR']), async (req, res) => {
+  try {
+    const validatedData = createPostSchema.parse(req.body);
+
+    const post = await req.prisma.post.create({
+      data: {
+        ...validatedData,
+        scheduledAt: new Date(validatedData.scheduledAt),
+        authorId: req.user.id
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json({
+      message: 'Post criado com sucesso',
+      post
+    });
+  } catch (error) {
+    console.error('Erro ao criar post:', error);
+    
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Dados inválidos',
+        details: error.errors
+      });
+    }
+    
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Atualizar post
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = updatePostSchema.parse(req.body);
+
+    // Verificar se post existe e permissões
+    const existingPost = await req.prisma.post.findUnique({
+      where: { id }
+    });
+
+    if (!existingPost) {
+      return res.status(404).json({ error: 'Post não encontrado' });
+    }
+
+    // Verificar permissões: admin pode editar qualquer post, outros só os próprios
+    if (req.user.role !== 'ADMIN' && existingPost.authorId !== req.user.id) {
+      return res.status(403).json({ 
+        error: 'Você só pode editar seus próprios posts' 
+      });
+    }
+
+    // Preparar dados para atualização
+    const updateData = { ...validatedData };
+    if (validatedData.scheduledAt) {
+      updateData.scheduledAt = new Date(validatedData.scheduledAt);
+    }
+
+    const post = await req.prisma.post.update({
+      where: { id },
+      data: updateData,
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      message: 'Post atualizado com sucesso',
+      post
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar post:', error);
+    
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Dados inválidos',
+        details: error.errors
+      });
+    }
+    
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Deletar post
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar se post existe e permissões
+    const existingPost = await req.prisma.post.findUnique({
+      where: { id }
+    });
+
+    if (!existingPost) {
+      return res.status(404).json({ error: 'Post não encontrado' });
+    }
+
+    // Verificar permissões
+    if (req.user.role !== 'ADMIN' && existingPost.authorId !== req.user.id) {
+      return res.status(403).json({ 
+        error: 'Você só pode deletar seus próprios posts' 
+      });
+    }
+
+    await req.prisma.post.delete({
+      where: { id }
+    });
+
+    res.json({
+      message: 'Post deletado com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao deletar post:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Curtir/descurtir post
+router.post('/:id/like', authMiddleware, async (req, res) => {
+  try {
+    const { id: postId } = req.params;
+    const userId = req.user.id;
+
+    // Verificar se post existe
+    const post = await req.prisma.post.findUnique({
+      where: { id: postId }
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post não encontrado' });
+    }
+
+    // Verificar se já curtiu
+    const existingLike = await req.prisma.like.findUnique({
+      where: {
+        postId_userId: {
+          postId,
+          userId
+        }
+      }
+    });
+
+    if (existingLike) {
+      // Remover curtida
+      await req.prisma.like.delete({
+        where: { id: existingLike.id }
+      });
+
+      res.json({
+        message: 'Curtida removida',
+        liked: false
+      });
+    } else {
+      // Adicionar curtida
+      await req.prisma.like.create({
+        data: {
+          postId,
+          userId
+        }
+      });
+
+      res.json({
+        message: 'Post curtido',
+        liked: true
+      });
+    }
+  } catch (error) {
+    console.error('Erro ao curtir post:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Comentar no post
+router.post('/:id/comments', authMiddleware, async (req, res) => {
+  try {
+    const { id: postId } = req.params;
+    const { content } = req.body;
+
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Conteúdo do comentário é obrigatório' });
+    }
+
+    // Verificar se post existe
+    const post = await req.prisma.post.findUnique({
+      where: { id: postId }
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post não encontrado' });
+    }
+
+    const comment = await req.prisma.comment.create({
+      data: {
+        content: content.trim(),
+        postId,
+        authorId: req.user.id
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json({
+      message: 'Comentário adicionado',
+      comment
+    });
+  } catch (error) {
+    console.error('Erro ao comentar:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Estatísticas do dashboard
+router.get('/stats/dashboard', authMiddleware, async (req, res) => {
+  try {
+    const where = {};
+    
+    // Se não for admin, só ver estatísticas próprias
+    if (req.user.role !== 'ADMIN') {
+      where.authorId = req.user.id;
+    }
+
+    const [
+      totalPosts,
+      draftPosts,
+      scheduledPosts,
+      publishedPosts,
+      archivedPosts
+    ] = await Promise.all([
+      req.prisma.post.count({ where }),
+      req.prisma.post.count({ where: { ...where, status: 'DRAFT' } }),
+      req.prisma.post.count({ where: { ...where, status: 'SCHEDULED' } }),
+      req.prisma.post.count({ where: { ...where, status: 'PUBLISHED' } }),
+      req.prisma.post.count({ where: { ...where, status: 'ARCHIVED' } })
+    ]);
+
+    res.json({
+      total: totalPosts,
+      byStatus: {
+        draft: draftPosts,
+        scheduled: scheduledPosts,
+        published: publishedPosts,
+        archived: archivedPosts
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+export default router;

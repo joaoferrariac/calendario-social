@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(READER)
+  avatar    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  posts     Post[]
+  comments  Comment[]
+  likes     Like[]
+
+  @@map("users")
+}
+
+model Post {
+  id          String      @id @default(cuid())
+  title       String
+  content     String?
+  scheduledAt DateTime
+  status      PostStatus  @default(DRAFT)
+  platform    Platform
+  mediaUrls   String[]    // Array de URLs de imagens/vídeos
+  hashtags    String[]    // Array de hashtags
+  authorId    String
+  
+  // Relacionamentos
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  likes       Like[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  postId    String
+  authorId  String
+  
+  // Relacionamentos
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("comments")
+}
+
+model Like {
+  id       String @id @default(cuid())
+  postId   String
+  userId   String
+  
+  // Relacionamentos
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@map("likes")
+}
+
+model MediaFile {
+  id          String    @id @default(cuid())
+  filename    String
+  originalName String
+  cloudinaryUrl String
+  publicId    String
+  mimetype    String
+  size        Int
+  width       Int?
+  height      Int?
+  
+  createdAt   DateTime  @default(now())
+
+  @@map("media_files")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  READER
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Platform {
+  INSTAGRAM
+  FACEBOOK
+  TWITTER
+  LINKEDIN
+  TIKTOK
+  YOUTUBE
+}
