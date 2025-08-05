@@ -10,6 +10,7 @@ import api from '@/lib/api';
 
 const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
   const [formData, setFormData] = useState({
+    title: post?.title || '',
     content: post?.content || '',
     platform: post?.platform || 'INSTAGRAM',
     scheduledAt: selectedDate ? selectedDate.toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
@@ -25,6 +26,7 @@ const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
     
     try {
       const postData = {
+        title: formData.title,
         content: formData.content,
         platform: formData.platform,
         scheduledAt: new Date(formData.scheduledAt).toISOString(),
@@ -116,6 +118,19 @@ const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Título do Post
+              </label>
+              <Input
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Digite o título do post..."
+                className="w-full"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Conteúdo
               </label>
               <Textarea
@@ -124,7 +139,6 @@ const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
                 placeholder="Escreva o conteúdo do seu post..."
                 rows={6}
                 className="w-full"
-                required
               />
             </div>
 
