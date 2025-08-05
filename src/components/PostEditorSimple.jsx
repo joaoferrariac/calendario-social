@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import MediaUploader from '@/components/MediaUploader';
+import InstagramPublisher from '@/components/InstagramPublisher';
 import api from '@/lib/api';
 
 const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
@@ -209,6 +210,25 @@ const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
                 required
               />
             </div>
+
+            {/* Publicação no Instagram */}
+            {post && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Publicar no Instagram
+                </label>
+                <InstagramPublisher 
+                  post={{...post, ...formData}} 
+                  onPublishSuccess={() => {
+                    toast({
+                      title: "Sucesso!",
+                      description: "Post publicado no Instagram com sucesso!",
+                    });
+                    onSave();
+                  }}
+                />
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button

@@ -66,6 +66,16 @@ const postSchema = new mongoose.Schema({
     impressions: { type: Number, default: 0 },
     engagement: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 }
+  },
+  // Campos específicos do Instagram
+  instagramPostId: {
+    type: String,
+    default: null
+  },
+  publishedData: {
+    platform: { type: String },
+    publishedAt: { type: Date },
+    externalId: { type: String }
   }
 }, {
   timestamps: true

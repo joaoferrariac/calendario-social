@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import postRoutes from './routes/posts.js';
 import userRoutes from './routes/users.js';
 import mediaRoutes from './routes/media.js';
+import instagramRoutes from './routes/instagram.js';
 
 // Configurações
 dotenv.config();
@@ -75,6 +76,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/instagram', instagramRoutes);
 
 // Rota de health check
 app.get('/api/health', (req, res) => {
