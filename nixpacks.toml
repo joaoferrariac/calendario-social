@@ -1,17 +1,13 @@
-[providers]
-nodejs = "18"
-
-[variables]
-NODE_ENV = "production"
+providers = ["node"]
 
 [phases.setup]
-nixPkgs = ["nodejs-18_x", "npm-9_x"]
+nixPkgs = ["nodejs_18", "npm"]
 
 [phases.install]
-cmds = ["cd server && npm ci --only=production"]
+cmds = ["cd server && npm install"]
 
 [phases.build]
 cmds = ["cd server && npx prisma generate"]
 
-[phases.start]
+[start]
 cmd = "cd server && npm start"
