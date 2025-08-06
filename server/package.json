@@ -8,7 +8,10 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "build": "npm install",
-    "db:seed": "node seed.js"
+    "db:seed": "node seed.js",
+    "db:reset": "node seed.js",
+    "db:check": "node check-db.js",
+    "db:status": "node check-db.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

@@ -1,12 +1,19 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
 import User from './models/User.js';
 import Post from './models/Post.js';
-import connectDB from './config/database.js';
+
+// Carregar variáveis de ambiente
+dotenv.config();
 
 const seedDatabase = async () => {
   try {
-    await connectDB();
+    // Conectar ao MongoDB
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/calendario-social';
+    await mongoose.connect(mongoURI);
+
+    console.log('🔌 Conectado ao MongoDB para seed');
     
     // Limpar dados existentes
     console.log('🗑️ Limpando dados existentes...');
