@@ -22,7 +22,7 @@ const postSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED'],
+    enum: ['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED', 'FAILED'],
     default: 'DRAFT'
   },
   scheduledAt: {
@@ -32,6 +32,30 @@ const postSchema = new mongoose.Schema({
   publishedAt: {
     type: Date,
     default: null
+  },
+  // Configurações de agendamento
+  autoPublish: {
+    type: Boolean,
+    default: false
+  },
+  publishMode: {
+    type: String,
+    enum: ['MANUAL', 'SCHEDULED', 'RECURRING'],
+    default: 'MANUAL'
+  },
+  recurrence: {
+    type: {
+      type: String,
+      enum: ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY'],
+      default: 'NONE'
+    },
+    interval: { type: Number, default: 1 },
+    endDate: { type: Date, default: null },
+    daysOfWeek: [{ type: Number, min: 0, max: 6 }] // 0 = domingo, 6 = sábado
+  },
+  reminder: {
+    enabled: { type: Boolean, default: false },
+    minutesBefore: { type: Number, default: 60 }
   },
   mediaUrls: [{
     type: String

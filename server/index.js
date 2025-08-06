@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import connectDB from './config/database.js';
+import schedulerService from './services/schedulerService.js';
+import InstagramSyncService from './services/InstagramSyncService.js';
 
 // Importar rotas
 import authRoutes from './routes/auth.js';
@@ -11,6 +13,7 @@ import postRoutes from './routes/posts.js';
 import userRoutes from './routes/users.js';
 import mediaRoutes from './routes/media.js';
 import instagramRoutes from './routes/instagram.js';
+import instagramAuthRoutes from './routes/instagramAuth.js';
 
 // Configurações
 dotenv.config();
@@ -19,6 +22,12 @@ const PORT = process.env.PORT || 3001;
 
 // Conectar ao MongoDB
 connectDB();
+
+// Inicializar o agendador de posts
+schedulerService.initialize();
+
+// Inicializar sincronização automática do Instagram
+InstagramSyncService.scheduleAutoSync();
 
 // Middlewares de segurança
 app.use(helmet({
@@ -77,6 +86,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/instagram', instagramRoutes);
+app.use('/api/instagram-auth', instagramAuthRoutes);
 
 // Rota de health check
 app.get('/api/health', (req, res) => {

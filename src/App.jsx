@@ -13,6 +13,8 @@ import PostsPage from '@/pages/PostsPage';
 import MediaPage from '@/pages/MediaPage';
 import UsersPage from '@/pages/UsersPage';
 import ProfilePage from '@/pages/ProfilePage';
+import InstagramSuccess from '@/pages/InstagramSuccess';
+import InstagramError from '@/pages/InstagramError';
 
 // Componente de rota protegida
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -124,6 +126,10 @@ function App() {
               </ProtectedRoute>
             } 
           />
+
+          {/* Rotas do Instagram OAuth */}
+          <Route path="/instagram-success" element={<InstagramSuccess />} />
+          <Route path="/instagram-error" element={<InstagramError />} />
           
           {/* Redirecionamentos */}
           <Route 

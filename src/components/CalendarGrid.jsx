@@ -1,7 +1,20 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Calendar, Clock, Image, Video, Camera, Grid as GridIcon } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Calendar, 
+  Clock, 
+  Image, 
+  Video, 
+  Camera, 
+  Grid as GridIcon,
+  Play,
+  RotateCcw,
+  Hand,
+  Zap
+} from 'lucide-react';
 
 const CalendarGrid = ({ 
   currentDate, 
@@ -13,6 +26,33 @@ const CalendarGrid = ({
   getPostTypeIcon,
   getPlatformColor
 }) => {
+  // Função para obter ícone do modo de publicação
+  const getPublishModeIcon = (publishMode) => {
+    switch (publishMode) {
+      case 'MANUAL':
+        return <Hand className="w-3 h-3" />;
+      case 'SCHEDULED':
+        return <Clock className="w-3 h-3" />;
+      case 'RECURRING':
+        return <RotateCcw className="w-3 h-3" />;
+      default:
+        return <Hand className="w-3 h-3" />;
+    }
+  };
+
+  // Função para obter cor do modo de publicação
+  const getPublishModeColor = (publishMode) => {
+    switch (publishMode) {
+      case 'MANUAL':
+        return 'text-gray-500';
+      case 'SCHEDULED':
+        return 'text-blue-500';
+      case 'RECURRING':
+        return 'text-green-500';
+      default:
+        return 'text-gray-500';
+    }
+  };
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -192,17 +232,32 @@ const CalendarGrid = ({
                   {/* Preview dos posts principais */}
                   <div className="flex items-center gap-1">
                     {postsForDate.slice(0, 3).map((post, postIndex) => (
-                      <motion.div
-                        key={post.id}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: postIndex * 0.1 }}
-                        className={`
-                          w-2 h-2 rounded-full
-                          ${getPlatformColor ? getPlatformColor(post.platform) : 'bg-gray-400'}
-                        `}
-                        title={`${post.platform} - ${post.title}`}
-                      />
+                      <div key={post.id} className="relative group">
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: postIndex * 0.1 }}
+                          className={`
+                            w-3 h-3 rounded-full border-2 border-white
+                            ${getPlatformColor ? getPlatformColor(post.platform) : 'bg-gray-400'}
+                          `}
+                          title={`${post.platform} - ${post.title}`}
+                        />
+                        {/* Indicador do modo de publicação */}
+                        <div className={`
+                          absolute -top-1 -right-1 
+                          ${getPublishModeColor(post.publishMode)}
+                        `}>
+                          {getPublishModeIcon(post.publishMode)}
+                        </div>
+                        
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                          {post.platform} - {post.publishMode === 'MANUAL' ? 'Manual' : post.publishMode === 'SCHEDULED' ? 'Agendado' : 'Recorrente'}
+                          <br />
+                          {post.title}
+                        </div>
+                      </div>
                     ))}
                     {postsForDate.length > 3 && (
                       <span className="text-xs text-gray-500 ml-1">

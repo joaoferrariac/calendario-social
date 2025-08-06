@@ -346,4 +346,33 @@ router.get('/stats/overview', authMiddleware, async (req, res) => {
   }
 });
 
+// Listar posts agendados
+router.get('/scheduled', authMiddleware, async (req, res) => {
+  try {
+    const now = new Date();
+    const posts = await Post.find({
+      scheduledAt: { $gte: now },
+      status: 'SCHEDULED',
+      publishMode: { $in: ['SCHEDULED', 'RECURRING'] }
+    })
+    .populate('author', 'name email')
+    .sort({ scheduledAt: 1 })
+    .limit(50);
+
+    res.json({
+      success: true,
+      data: posts,
+      meta: {
+        total: posts.length,
+        timestamp: now.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar posts agendados:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor'
+    });
+  }
+});
+
 export default router;

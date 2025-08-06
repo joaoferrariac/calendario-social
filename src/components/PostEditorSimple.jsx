@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Upload, Image as ImageIcon, Trash2, Plus } from 'lucide-react';
+import { X, Save, Upload, Image as ImageIcon, Trash2, Plus, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import MediaUploader from '@/components/MediaUploader';
 import InstagramPublisher from '@/components/InstagramPublisher';
+import PostScheduler from '@/components/PostScheduler';
 import api from '@/lib/api';
 
 const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
@@ -15,10 +16,14 @@ const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
     content: post?.content || '',
     platform: post?.platform || 'INSTAGRAM',
     scheduledAt: selectedDate ? selectedDate.toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-    mediaUrls: post?.mediaUrls || []
+    mediaUrls: post?.mediaUrls || [],
+    hashtags: post?.hashtags || [],
+    publishMode: post?.publishMode || 'MANUAL',
+    autoPublish: post?.autoPublish || false
   });
   const [saving, setSaving] = useState(false);
   const [showMediaUploader, setShowMediaUploader] = useState(false);
+  const [activeTab, setActiveTab] = useState('content');
   const { toast } = useToast();
 
   const handleSubmit = async (e) => {
@@ -116,107 +121,159 @@ const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
           </div>
 
           {/* Content */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Título do Post
-              </label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Digite o título do post..."
-                className="w-full"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="p-6">
+            {/* Tabs */}
+            <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('content')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activeTab === 'content' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
                 Conteúdo
-              </label>
-              <Textarea
-                value={formData.content}
-                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Escreva o conteúdo do seu post..."
-                rows={6}
-                className="w-full"
-              />
-            </div>
-
-            {/* Área de Mídia */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Imagens do Post
-                </label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowMediaUploader(true)}
-                  className="flex items-center gap-2"
+              </button>
+              <button
+                onClick={() => setActiveTab('schedule')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activeTab === 'schedule' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Agendamento
+              </button>
+              {post && (
+                <button
+                  onClick={() => setActiveTab('publish')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    activeTab === 'publish' 
+                      ? 'bg-white text-purple-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
                 >
-                  <Plus className="w-4 h-4" />
-                  Adicionar Imagens
-                </Button>
-              </div>
-
-              {/* Grid de Imagens */}
-              {formData.mediaUrls.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-gray-200 rounded-lg">
-                  {formData.mediaUrls.map((url, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={`http://localhost:5000${url}`}
-                        alt={`Mídia ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeMedia(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Nenhuma imagem adicionada</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowMediaUploader(true)}
-                    className="mt-2 text-purple-600 hover:text-purple-700"
-                  >
-                    Clique para adicionar imagens
-                  </Button>
-                </div>
+                  Publicar
+                </button>
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data de Agendamento
-              </label>
-              <Input
-                type="datetime-local"
-                value={formData.scheduledAt}
-                onChange={(e) => setFormData(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                className="w-full"
-                required
-              />
-            </div>
+            {/* Tab Content */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {activeTab === 'content' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Título do Post
+                    </label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Digite o título do post..."
+                      className="w-full"
+                      required
+                    />
+                  </div>
 
-            {/* Publicação no Instagram */}
-            {post && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Publicar no Instagram
-                </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Conteúdo
+                    </label>
+                    <Textarea
+                      value={formData.content}
+                      onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="Escreva o conteúdo do seu post..."
+                      rows={6}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Área de Mídia */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Imagens do Post
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowMediaUploader(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar Imagens
+                      </Button>
+                    </div>
+
+                    {/* Grid de Imagens */}
+                    {formData.mediaUrls.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-gray-200 rounded-lg">
+                        {formData.mediaUrls.map((url, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={`http://localhost:5000${url}`}
+                              alt={`Mídia ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeMedia(index)}
+                              className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">Nenhuma imagem adicionada</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowMediaUploader(true)}
+                          className="mt-2 text-purple-600 hover:text-purple-700"
+                        >
+                          Clique para adicionar imagens
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data de Agendamento
+                    </label>
+                    <Input
+                      type="datetime-local"
+                      value={formData.scheduledAt}
+                      onChange={(e) => setFormData(prev => ({ ...prev, scheduledAt: e.target.value }))}
+                      className="w-full"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'schedule' && (
+                <PostScheduler 
+                  post={{...post, ...formData}}
+                  onUpdate={(updatedPost) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      publishMode: updatedPost.publishMode,
+                      autoPublish: updatedPost.autoPublish,
+                      scheduledAt: updatedPost.scheduledAt ? updatedPost.scheduledAt.toISOString().slice(0, 16) : prev.scheduledAt
+                    }));
+                  }}
+                />
+              )}
+
+              {activeTab === 'publish' && post && (
                 <InstagramPublisher 
                   post={{...post, ...formData}} 
                   onPublishSuccess={() => {
@@ -227,37 +284,37 @@ const PostEditorSimple = ({ post, selectedDate, onClose, onSave }) => {
                     onSave();
                   }}
                 />
-              </div>
-            )}
+              )}
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={saving}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={saving}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
-                {saving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Salvar Post
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={saving}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Salvar Post
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
         </motion.div>
 
         {/* MediaUploader Modal */}

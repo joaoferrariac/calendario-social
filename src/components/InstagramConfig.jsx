@@ -4,6 +4,7 @@ import { Instagram, CheckCircle, AlertCircle, ExternalLink, Settings } from 'luc
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import api from '@/lib/api';
+import InstagramConnect from './InstagramConnect';
 
 const InstagramConfig = () => {
   const [status, setStatus] = useState(null);
@@ -164,6 +165,22 @@ const InstagramConfig = () => {
           </div>
         </div>
       )}
+
+      {/* OAuth Connection Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mt-8"
+      >
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <Instagram className="w-5 h-5 mr-2 text-purple-600" />
+            Conexão OAuth Instagram
+          </h3>
+          <InstagramConnect />
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
