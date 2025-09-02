@@ -18,6 +18,17 @@ router.get('/auth', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao gerar URL de autenticação:', error);
+    
+    // Verificar se é erro de credenciais não configuradas
+    if (error.message.includes('não configurado') || error.message.includes('placeholder')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Credenciais do Instagram não configuradas',
+        details: 'As credenciais do Instagram (CLIENT_ID e CLIENT_SECRET) precisam ser configuradas no arquivo .env',
+        action: 'configure_credentials'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'

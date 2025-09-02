@@ -5,8 +5,29 @@ class InstagramOAuthService {
     this.redirectUri = process.env.INSTAGRAM_REDIRECT_URI || 'http://localhost:5000/api/instagram-auth/callback';
   }
 
+  // Validar credenciais
+  validateCredentials() {
+    const placeholders = [
+      'seu_client_id_aqui',
+      'seu_client_secret_aqui',
+      'YOUR_CLIENT_ID',
+      'YOUR_CLIENT_SECRET'
+    ];
+
+    if (!this.clientId || placeholders.includes(this.clientId)) {
+      throw new Error('INSTAGRAM_CLIENT_ID não configurado ou usando valor placeholder');
+    }
+
+    if (!this.clientSecret || placeholders.includes(this.clientSecret)) {
+      throw new Error('INSTAGRAM_CLIENT_SECRET não configurado ou usando valor placeholder');
+    }
+  }
+
   // Gerar URL de autorização
   getAuthUrl() {
+    // Validar credenciais antes de gerar URL
+    this.validateCredentials();
+    
     const scope = 'user_profile,user_media';
     const state = this.generateState();
     

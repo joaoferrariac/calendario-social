@@ -11,7 +11,9 @@
     "db:seed": "node seed.js",
     "db:reset": "node seed.js",
     "db:check": "node check-db.js",
-    "db:status": "node check-db.js"
+    "db:status": "node check-db.js",
+    "env:check": "node check-env.js",
+    "config:verify": "node check-env.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

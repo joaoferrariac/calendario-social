@@ -53,11 +53,21 @@ const InstagramConnect = () => {
       }
     } catch (error) {
       console.error('Erro ao conectar:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao conectar com Instagram",
-        variant: "destructive"
-      });
+      
+      // Verificar se é erro de credenciais não configuradas
+      if (error.response?.data?.action === 'configure_credentials') {
+        toast({
+          title: "Configuração Necessária",
+          description: "As credenciais do Instagram precisam ser configuradas. Verifique o arquivo .env no servidor.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: error.response?.data?.message || "Erro ao conectar com Instagram",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -134,6 +144,28 @@ const InstagramConnect = () => {
           <p className="text-gray-600 mb-6">
             Conecte sua conta do Instagram para sincronizar posts, insights e automatizar publicações.
           </p>
+          
+          {/* Aviso sobre configuração necessária */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
+            <h4 className="font-medium text-yellow-800 mb-2">⚠️ Configuração Necessária</h4>
+            <p className="text-sm text-yellow-700 mb-3">
+              Para conectar o Instagram, você precisa configurar as credenciais da API do Instagram no arquivo .env:
+            </p>
+            <div className="bg-gray-800 rounded p-3 text-green-400 text-sm font-mono">
+              <div>INSTAGRAM_CLIENT_ID=seu_client_id_real</div>
+              <div>INSTAGRAM_CLIENT_SECRET=seu_client_secret_real</div>
+            </div>
+            <div className="mt-3 text-sm text-yellow-700">
+              <p className="mb-2"><strong>Como obter as credenciais:</strong></p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Acesse <a href="https://developers.facebook.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Facebook Developers</a></li>
+                <li>Crie um novo app</li>
+                <li>Adicione o produto "Instagram Basic Display"</li>
+                <li>Configure as URLs de redirecionamento</li>
+                <li>Copie o Client ID e Client Secret</li>
+              </ol>
+            </div>
+          </div>
           
           <Button
             onClick={handleConnect}
