@@ -240,6 +240,18 @@ export const db = {
 
   // === USERS ===
   users: {
+    /**
+     * Listar todos os usuários
+     */
+    list: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      return { data, error };
+    },
+
     getAll: async () => {
       const { data, error } = await supabase
         .from('users')
@@ -272,15 +284,47 @@ export const db = {
       return data;
     },
 
-    create: async (user) => {
-      const { data, error } = await supabase
-        .from('users')
-        .insert([user])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+    /**
+     * Criar novo usuário
+     * IMPORTANTE: Só pode ser chamado por DESIGNER/ADMIN/MASTER
+     * @param {Object} userData - { name, email, password, role }
+     */
+    create: async (userData) => {
+      try {
+        // 1. Criar usuário no Supabase Auth (admin API ou signUp)
+        // Nota: Para criar sem login automático, use a API admin do Supabase
+        // Por ora, criamos apenas na tabela users (sem auth)
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', userData.email)
+          .single();
+        
+        if (existingUser) {
+          return { data: null, error: 'Email já está em uso' };
+        }
+
+        // 2. Criar registro na tabela users
+        const { data, error } = await supabase
+          .from('users')
+          .insert([{
+            name: userData.name,
+            email: userData.email,
+            role: userData.role || 'READER',
+            // Nota: Em produção, use Supabase Auth para senhas
+            // Este é um placeholder - a senha real deve ir no Auth
+          }])
+          .select()
+          .single();
+        
+        if (error) {
+          return { data: null, error: error.message };
+        }
+
+        return { data, error: null };
+      } catch (err) {
+        return { data: null, error: err.message };
+      }
     },
 
     update: async (id, user) => {
@@ -300,6 +344,58 @@ export const db = {
         .from('users')
         .delete()
         .eq('id', id);
+      
+      if (error) throw error;
+      return true;
+    }
+  },
+
+  // === USER_CLIENTS (Vínculo usuário-cliente) ===
+  userClients: {
+    /**
+     * Criar vínculo entre usuário e cliente
+     */
+    create: async (data) => {
+      const { data: result, error } = await supabase
+        .from('user_clients')
+        .insert([{
+          user_id: data.user_id,
+          client_id: data.client_id,
+          role: data.role || 'READER',
+          is_default: data.is_default || false
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return result;
+    },
+
+    /**
+     * Buscar clientes de um usuário
+     */
+    getByUser: async (userId) => {
+      const { data, error } = await supabase
+        .from('user_clients')
+        .select(`
+          *,
+          clients (*)
+        `)
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      return data;
+    },
+
+    /**
+     * Remover vínculo
+     */
+    delete: async (userId, clientId) => {
+      const { error } = await supabase
+        .from('user_clients')
+        .delete()
+        .eq('user_id', userId)
+        .eq('client_id', clientId);
       
       if (error) throw error;
       return true;

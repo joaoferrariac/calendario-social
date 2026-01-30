@@ -1,51 +1,44 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, LogIn, UserPlus, Calendar, Lock, User, Mail } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Calendar, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import useAuthStore from '@/lib/authStore';
 
+/**
+ * Página de Login
+ * 
+ * IMPORTANTE: Não há registro público.
+ * - Apenas usuários pré-cadastrados podem fazer login
+ * - Novos usuários devem ser criados por um DESIGNER/ADMIN/MASTER
+ * - Clientes não se auto-cadastram
+ */
 const LoginPage = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const { login, register, isLoading, error } = useAuthStore();
+  const { login, isLoading, error } = useAuthStore();
   const { toast } = useToast();
 
   const {
     register: registerForm,
     handleSubmit,
     formState: { errors },
-    reset,
-    watch
   } = useForm();
 
   const onSubmit = async (data) => {
     try {
-      let result;
-      
-      if (isLogin) {
-        result = await login(data.email, data.password);
-      } else {
-        result = await register({
-          email: data.email,
-          password: data.password,
-          name: data.name,
-          role: 'READER'
-        });
-      }
+      const result = await login(data.email, data.password);
 
       if (result.success) {
         toast({
-          title: isLogin ? "Login realizado!" : "Conta criada!",
+          title: "Login realizado!",
           description: `Bem-vindo(a), ${result.user.name}!`,
         });
-        reset();
       } else {
         toast({
           title: "Erro",
-          description: result.error,
+          description: result.error || "Email ou senha inválidos",
           variant: "destructive"
         });
       }
@@ -56,12 +49,6 @@ const LoginPage = () => {
         variant: "destructive"
       });
     }
-  };
-
-  const handleToggleMode = () => {
-    setIsLogin(!isLogin);
-    reset();
-    setShowPassword(false);
   };
 
   return (
@@ -90,39 +77,19 @@ const LoginPage = () => {
           </p>
         </div>
 
-        {/* Formulário */}
+        {/* Formulário de Login */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 0.3 }}
           className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8"
         >
-          {/* Tabs */}
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => handleToggleMode()}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                isLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <LogIn className="w-4 h-4 inline mr-2" />
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggleMode()}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                !isLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <UserPlus className="w-4 h-4 inline mr-2" />
-              Criar Conta
-            </button>
+          {/* Header */}
+          <div className="flex items-center justify-center gap-2 mb-6 pb-4 border-b border-gray-100">
+            <LogIn className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              Acesse sua conta
+            </h2>
           </div>
 
           {/* Mensagem de erro */}
@@ -137,38 +104,6 @@ const LoginPage = () => {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Nome (apenas para registro) */}
-            {!isLogin && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome completo
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    type="text"
-                    className="pl-10"
-                    placeholder="Seu nome completo"
-                    {...registerForm('name', {
-                      required: !isLogin && 'Nome é obrigatório',
-                      minLength: !isLogin && {
-                        value: 2,
-                        message: 'Nome deve ter pelo menos 2 caracteres'
-                      }
-                    })}
-                  />
-                </div>
-                {errors.name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
-                )}
-              </motion.div>
-            )}
-
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -180,6 +115,7 @@ const LoginPage = () => {
                   type="email"
                   className="pl-10"
                   placeholder="seu@email.com"
+                  autoComplete="email"
                   {...registerForm('email', {
                     required: 'Email é obrigatório',
                     pattern: {
@@ -205,6 +141,7 @@ const LoginPage = () => {
                   type={showPassword ? 'text' : 'password'}
                   className="pl-10 pr-10"
                   placeholder="Sua senha"
+                  autoComplete="current-password"
                   {...registerForm('password', {
                     required: 'Senha é obrigatória',
                     minLength: {
@@ -226,7 +163,7 @@ const LoginPage = () => {
               )}
             </div>
 
-            {/* Botão de submit */}
+            {/* Botão de Login */}
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
@@ -235,44 +172,29 @@ const LoginPage = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {isLogin ? 'Entrando...' : 'Criando conta...'}
+                  Entrando...
                 </div>
               ) : (
                 <>
-                  {isLogin ? (
-                    <>
-                      <LogIn className="w-4 h-4 mr-2" />
-                      Entrar
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Criar Conta
-                    </>
-                  )}
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Entrar
                 </>
               )}
             </Button>
           </form>
 
-          {/* Informações de demonstração */}
-          {isLogin && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200"
-            >
-              <h3 className="text-sm font-medium text-blue-900 mb-2">
-                Contas de demonstração:
-              </h3>
-              <div className="text-xs text-blue-700 space-y-1">
-                <p><strong>Admin:</strong> admin@exemplo.com - admin123</p>
-                <p><strong>Editor:</strong> editor@exemplo.com - editor123</p>
-                <p><strong>Leitor:</strong> leitor@exemplo.com - reader123</p>
-              </div>
-            </motion.div>
-          )}
+          {/* Nota informativa */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200"
+          >
+            <p className="text-xs text-gray-600 text-center">
+              <strong>Não possui conta?</strong><br />
+              Entre em contato com o administrador do sistema para solicitar acesso.
+            </p>
+          </motion.div>
         </motion.div>
 
         {/* Footer */}
