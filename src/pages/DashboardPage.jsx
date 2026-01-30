@@ -1,30 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Instagram,
-  Heart,
-  MessageCircle,
-  Share,
-  TrendingUp,
   Calendar,
-  Users,
-  BarChart3,
   Clock,
   CheckCircle,
-  Eye,
-  Play,
-  Camera,
-  Plus
+  Plus,
+  FileText,
+  Image,
+  TrendingUp
 } from 'lucide-react';
 import Layout from '@/components/Layout/Layout';
 import { Button } from '@/components/ui/button';
-import { postsAPI, mediaAPI, usersAPI } from '@/lib/api';
+import { postsAPI, mediaAPI } from '@/lib/api';
 import useAuthStore from '@/lib/authStore';
-import InstagramConnect from '@/components/InstagramConnect';
 
-const MetricCard = ({ title, value, subtitle, icon: Icon, color, trend, isLoading, onClick }) => (
+const MetricCard = ({ title, value, subtitle, icon: Icon, color, isLoading, onClick }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -46,78 +37,6 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, color, trend, isLoadin
           <p className="text-xs text-slate-500">{subtitle}</p>
         </div>
       </div>
-      {trend && (
-        <div className="text-right">
-          <div className="flex items-center space-x-1 text-green-600">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-sm font-medium">{trend}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  </motion.div>
-);
-
-const InstagramPreview = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 }}
-    className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
-  >
-    <h3 className="text-lg font-semibold text-slate-900 mb-6">Preview do Instagram</h3>
-    
-    <div className="max-w-sm mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Instagram Header */}
-      <div className="flex items-center space-x-3 p-4">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
-          <Instagram className="w-4 h-4 text-white" />
-        </div>
-        <div>
-          <p className="font-medium text-slate-900">@sua_empresa</p>
-          <p className="text-sm text-slate-500">Há 2 horas • São Paulo</p>
-        </div>
-        <div className="ml-auto">
-          <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-        </div>
-      </div>
-
-      {/* Image Placeholder */}
-      <div className="aspect-square bg-gradient-to-br from-purple-100 via-pink-100 to-orange-100 flex flex-col items-center justify-center relative group">
-        <Camera className="w-16 h-16 text-purple-400 mb-3" />
-        <p className="text-sm text-purple-600 font-medium">Sua próxima postagem aparecerá aqui</p>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-      </div>
-
-      {/* Actions */}
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-4">
-            <Heart className="w-6 h-6 text-slate-400 hover:text-red-500 cursor-pointer transition-colors" />
-            <MessageCircle className="w-6 h-6 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors" />
-            <Share className="w-6 h-6 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors" />
-          </div>
-          <div className="text-slate-400 hover:text-slate-600 cursor-pointer">
-            <div className="w-6 h-6 flex items-center justify-center">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <p className="text-sm">
-          <span className="font-medium">247 curtidas</span>
-        </p>
-        <p className="text-sm text-slate-900 mt-1">
-          <span className="font-medium">@sua_empresa</span> Conteúdo incrível sendo criado! 🚀 
-          <span className="text-purple-600"> #marketing #instagram #socialmedia</span>
-        </p>
-        <p className="text-xs text-slate-500 mt-2 cursor-pointer hover:text-slate-700">Ver todos os 12 comentários</p>
-        <div className="flex items-center mt-3 text-xs text-slate-400">
-          <Clock className="w-3 h-3 mr-1" />
-          Há 2 horas
-        </div>
-      </div>
     </div>
   </motion.div>
 );
@@ -137,43 +56,17 @@ const QuickActions = () => {
       <div className="grid grid-cols-1 gap-4">
         <Button 
           onClick={() => navigate('/posts')}
-          className="h-auto p-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 group"
+          className="h-auto p-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 group"
         >
           <div className="flex items-center w-full">
-            <Instagram className="w-8 h-8 mr-4 group-hover:scale-110 transition-transform" />
+            <FileText className="w-8 h-8 mr-4 group-hover:scale-110 transition-transform" />
             <div className="text-left">
-              <p className="font-medium text-white">Novo Post do Feed</p>
-              <p className="text-xs opacity-90">Criar post para o Instagram</p>
+              <p className="font-medium text-white">Novo Post</p>
+              <p className="text-xs opacity-90">Criar uma nova postagem</p>
             </div>
             <Plus className="w-5 h-5 ml-auto" />
           </div>
         </Button>
-        
-        <div className="grid grid-cols-2 gap-3">
-          <Button 
-            onClick={() => navigate('/posts')}
-            variant="outline" 
-            className="h-auto p-4 border-purple-200 hover:bg-purple-50 group"
-          >
-            <div className="text-center">
-              <Camera className="w-6 h-6 mb-2 text-purple-600 mx-auto group-hover:scale-110 transition-transform" />
-              <p className="font-medium text-purple-600 text-sm">Stories</p>
-              <p className="text-xs text-purple-500">24h</p>
-            </div>
-          </Button>
-          
-          <Button 
-            onClick={() => navigate('/posts')}
-            variant="outline" 
-            className="h-auto p-4 border-pink-200 hover:bg-pink-50 group"
-          >
-            <div className="text-center">
-              <Play className="w-6 h-6 mb-2 text-pink-600 mx-auto group-hover:scale-110 transition-transform" />
-              <p className="font-medium text-pink-600 text-sm">Reels</p>
-              <p className="text-xs text-pink-500">Vídeo</p>
-            </div>
-          </Button>
-        </div>
         
         <Button 
           onClick={() => navigate('/calendar')}
@@ -183,8 +76,22 @@ const QuickActions = () => {
           <div className="flex items-center w-full">
             <Calendar className="w-6 h-6 mr-3 text-blue-600 group-hover:scale-110 transition-transform" />
             <div className="text-left">
-              <p className="font-medium text-blue-600">Agendar Postagem</p>
-              <p className="text-xs text-blue-500">Programar para mais tarde</p>
+              <p className="font-medium text-blue-600">Ver Calendário</p>
+              <p className="text-xs text-blue-500">Visualizar agendamentos</p>
+            </div>
+          </div>
+        </Button>
+        
+        <Button 
+          onClick={() => navigate('/media')}
+          variant="outline" 
+          className="h-auto p-4 border-purple-200 hover:bg-purple-50 group"
+        >
+          <div className="flex items-center w-full">
+            <Image className="w-6 h-6 mr-3 text-purple-600 group-hover:scale-110 transition-transform" />
+            <div className="text-left">
+              <p className="font-medium text-purple-600">Biblioteca de Mídia</p>
+              <p className="text-xs text-purple-500">Gerenciar arquivos</p>
             </div>
           </div>
         </Button>
@@ -193,99 +100,114 @@ const QuickActions = () => {
   );
 };
 
-const RecentActivity = ({ isLoading, posts }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.4 }}
-    className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
-  >
-    <h3 className="text-lg font-semibold text-slate-900 mb-6">Atividade Recente</h3>
-    
-    {isLoading ? (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-slate-200 rounded-xl animate-pulse"></div>
-            <div className="flex-1">
-              <div className="h-4 bg-slate-200 rounded w-3/4 mb-2 animate-pulse"></div>
-              <div className="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : posts && posts.length > 0 ? (
-      <div className="space-y-4">
-        {posts.slice(0, 5).map((post) => (
-          <div key={post.id} className="flex items-center space-x-3 p-4 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-              post.status === 'PUBLISHED' ? 'bg-green-100' :
-              post.status === 'SCHEDULED' ? 'bg-blue-100' : 'bg-yellow-100'
-            }`}>
-              {post.status === 'PUBLISHED' ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              ) : post.status === 'SCHEDULED' ? (
-                <Clock className="w-6 h-6 text-blue-600" />
-              ) : (
-                <Eye className="w-6 h-6 text-yellow-600" />
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-slate-900 truncate">{post.title}</p>
-              <div className="flex items-center space-x-2 text-sm text-slate-500">
-                <Instagram className="w-4 h-4" />
-                <span>{post.platform}</span>
-                <span>•</span>
-                <span>{new Date(post.scheduledAt).toLocaleDateString('pt-BR')}</span>
+const RecentActivity = ({ isLoading, posts }) => {
+  const navigate = useNavigate();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.4 }}
+      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
+    >
+      <h3 className="text-lg font-semibold text-slate-900 mb-6">Atividade Recente</h3>
+      
+      {isLoading ? (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-slate-200 rounded-xl animate-pulse"></div>
+              <div className="flex-1">
+                <div className="h-4 bg-slate-200 rounded w-3/4 mb-2 animate-pulse"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/2 animate-pulse"></div>
               </div>
             </div>
-            <div className="text-slate-400">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Instagram className="w-8 h-8 text-purple-600" />
+          ))}
         </div>
-        <p className="text-slate-500 mb-4">Nenhuma atividade recente</p>
-        <Button 
-          onClick={() => window.location.href = '/posts'}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Criar Primeiro Post
-        </Button>
-      </div>
-    )}
-  </motion.div>
-);
+      ) : posts && posts.length > 0 ? (
+        <div className="space-y-4">
+          {posts.slice(0, 5).map((post) => (
+            <div 
+              key={post.id} 
+              className="flex items-center space-x-3 p-4 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+              onClick={() => navigate('/posts')}
+            >
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                post.status === 'PUBLISHED' ? 'bg-green-100' :
+                post.status === 'SCHEDULED' ? 'bg-blue-100' : 'bg-yellow-100'
+              }`}>
+                {post.status === 'PUBLISHED' ? (
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                ) : post.status === 'SCHEDULED' ? (
+                  <Clock className="w-6 h-6 text-blue-600" />
+                ) : (
+                  <FileText className="w-6 h-6 text-yellow-600" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-slate-900 truncate">{post.title || 'Sem título'}</p>
+                <div className="flex items-center space-x-2 text-sm text-slate-500">
+                  <span>{
+                    post.status === 'PUBLISHED' ? 'Publicado' :
+                    post.status === 'SCHEDULED' ? 'Agendado' : 'Rascunho'
+                  }</span>
+                  <span>•</span>
+                  <span>{new Date(post.scheduledDate || post.createdAt).toLocaleDateString('pt-BR')}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-purple-600" />
+          </div>
+          <p className="text-slate-500 mb-4">Nenhuma atividade recente</p>
+          <Button 
+            onClick={() => navigate('/posts')}
+            className="bg-gradient-to-r from-blue-500 to-purple-600"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Criar Primeiro Post
+          </Button>
+        </div>
+      )}
+    </motion.div>
+  );
+};
 
 const DashboardPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [postsStats, setPostsStats] = useState(null);
+  const [mediaStats, setMediaStats] = useState(null);
+  const [recentPosts, setRecentPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Queries para estatísticas
-  const { data: postsStats, isLoading: postsLoading } = useQuery({
-    queryKey: ['posts-stats'],
-    queryFn: postsAPI.getStats
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        const [postsStatsData, mediaStatsData, postsData] = await Promise.all([
+          postsAPI.getStats(),
+          mediaAPI.getStats(),
+          postsAPI.getPosts({ limit: 5 })
+        ]);
+        
+        setPostsStats(postsStatsData);
+        setMediaStats(mediaStatsData);
+        setRecentPosts(postsData.posts || []);
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const { data: mediaStats, isLoading: mediaLoading } = useQuery({
-    queryKey: ['media-stats'],
-    queryFn: mediaAPI.getStats,
-    enabled: user?.role === 'ADMIN' || user?.role === 'EDITOR'
-  });
-
-  const { data: recentPosts, isLoading: recentLoading } = useQuery({
-    queryKey: ['recent-posts'],
-    queryFn: () => postsAPI.getPosts({ limit: 5, page: 1 }),
-    select: (data) => data.posts
-  });
+    loadData();
+  }, []);
 
   return (
     <Layout>
@@ -294,21 +216,17 @@ const DashboardPage = () => {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-4xl font-bold text-slate-900 mb-2">
-              Olá, {user?.name}! 👋
+              Olá, {user?.name || 'Usuário'}! 👋
             </h1>
             <p className="text-lg text-slate-600">
-              Vamos criar conteúdo incrível para o Instagram hoje
+              Bem-vindo ao Calendário Social
             </p>
           </div>
           
-          <div className="mt-6 lg:mt-0 flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-4 py-2 bg-purple-100 rounded-xl">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span className="text-sm font-medium text-purple-700">Instagram conectado</span>
-            </div>
+          <div className="mt-6 lg:mt-0">
             <Button 
               onClick={() => navigate('/posts')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg"
             >
               <Plus className="w-4 h-4 mr-2" />
               Novo Post
@@ -319,65 +237,55 @@ const DashboardPage = () => {
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
-            title="Posts Criados"
+            title="Total de Posts"
             value={postsStats?.total || 0}
-            subtitle="Total de posts"
-            icon={Instagram}
-            color="bg-gradient-to-r from-purple-600 to-pink-600"
-            trend="+12%"
-            isLoading={postsLoading}
+            subtitle="Todos os posts"
+            icon={FileText}
+            color="bg-gradient-to-r from-blue-500 to-blue-600"
+            isLoading={loading}
+            onClick={() => navigate('/posts')}
+          />
+          
+          <MetricCard
+            title="Rascunhos"
+            value={postsStats?.draft || 0}
+            subtitle="Em elaboração"
+            icon={Clock}
+            color="bg-gradient-to-r from-yellow-500 to-orange-500"
+            isLoading={loading}
             onClick={() => navigate('/posts')}
           />
           
           <MetricCard
             title="Agendados"
-            value={postsStats?.byStatus?.scheduled || 0}
-            subtitle="Próximos 7 dias"
-            icon={Clock}
-            color="bg-gradient-to-r from-blue-600 to-blue-700"
-            isLoading={postsLoading}
+            value={postsStats?.scheduled || 0}
+            subtitle="Programados"
+            icon={Calendar}
+            color="bg-gradient-to-r from-blue-600 to-indigo-600"
+            isLoading={loading}
             onClick={() => navigate('/calendar')}
-          />
-          
-          <MetricCard
-            title="Publicados"
-            value={postsStats?.byStatus?.published || 0}
-            subtitle="Este mês"
-            icon={CheckCircle}
-            color="bg-gradient-to-r from-green-600 to-green-700"
-            trend="+8%"
-            isLoading={postsLoading}
-            onClick={() => navigate('/posts')}
           />
 
           <MetricCard
-            title="Arquivos de Mídia"
-            value={mediaStats?.totalFiles || 0}
-            subtitle="Fotos e vídeos"
-            icon={Camera}
-            color="bg-gradient-to-r from-pink-600 to-red-600"
-            isLoading={mediaLoading}
-            onClick={() => navigate('/media')}
+            title="Publicados"
+            value={postsStats?.published || 0}
+            subtitle="Já publicados"
+            icon={CheckCircle}
+            color="bg-gradient-to-r from-green-500 to-emerald-600"
+            isLoading={loading}
+            onClick={() => navigate('/posts')}
           />
         </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Instagram Connection */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="lg:col-span-2"
-          >
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold mb-6 flex items-center">
-                <Instagram className="w-5 h-5 mr-2 text-purple-600" />
-                Conexão Instagram
-              </h2>
-              <InstagramConnect />
-            </div>
-          </motion.div>
+          {/* Recent Activity */}
+          <div className="lg:col-span-2">
+            <RecentActivity 
+              isLoading={loading} 
+              posts={recentPosts} 
+            />
+          </div>
 
           {/* Quick Actions */}
           <div>
@@ -385,22 +293,33 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Instagram Preview & Additional Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Instagram Preview */}
-          <div className="lg:col-span-2">
-            <InstagramPreview />
+        {/* Media Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
+        >
+          <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center">
+            <TrendingUp className="w-5 h-5 mr-2 text-purple-600" />
+            Resumo de Mídia
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center p-4 bg-slate-50 rounded-xl">
+              <p className="text-3xl font-bold text-slate-900">{mediaStats?.total || 0}</p>
+              <p className="text-sm text-slate-500">Arquivos totais</p>
+            </div>
+            <div className="text-center p-4 bg-slate-50 rounded-xl">
+              <p className="text-3xl font-bold text-slate-900">{mediaStats?.images || 0}</p>
+              <p className="text-sm text-slate-500">Imagens</p>
+            </div>
+            <div className="text-center p-4 bg-slate-50 rounded-xl">
+              <p className="text-3xl font-bold text-slate-900">{mediaStats?.videos || 0}</p>
+              <p className="text-sm text-slate-500">Vídeos</p>
+            </div>
           </div>
-
-          {/* Additional Space */}
-          <div></div>
-        </div>
-
-        {/* Recent Activity */}
-        <RecentActivity 
-          isLoading={recentLoading} 
-          posts={recentPosts} 
-        />
+        </motion.div>
       </div>
     </Layout>
   );

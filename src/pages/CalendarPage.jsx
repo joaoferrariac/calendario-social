@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Plus, Filter, Grid, List, Upload, Video, Image as ImageIcon, Camera } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { 
+  Calendar, 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight, 
+  FileText,
+  Clock,
+  CheckCircle
+} from 'lucide-react';
 import Layout from '@/components/Layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
-import CalendarGrid from '@/components/CalendarGrid';
-import PostEditorSimple from '@/components/PostEditorSimple';
-import MediaUploader from '@/components/MediaUploader';
 import { useToast } from '@/components/ui/use-toast';
-import api from '@/lib/api';
+import { postsAPI, handleApiError } from '@/lib/api';
+
+const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const MONTHS = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
 
 const CalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
   const [posts, setPosts] = useState({});
-  const [filteredPosts, setFilteredPosts] = useState({});
-  const [showEditor, setShowEditor] = useState(false);
-  const [showMediaUploader, setShowMediaUploader] = useState(false);
-  const [editingPost, setEditingPost] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' ou 'list'
-  const [platformFilter, setPlatformFilter] = useState('all');
-  const [postTypeFilter, setPostTypeFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -28,18 +30,14 @@ const CalendarPage = () => {
     loadPosts();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [posts, platformFilter, postTypeFilter]);
-
   const loadPosts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/posts');
+      const response = await postsAPI.getPosts();
       const postsData = {};
       
-      response.data.forEach(post => {
-        const dateKey = new Date(post.scheduledAt).toISOString().split('T')[0];
+      (response.posts || []).forEach(post => {
+        const dateKey = new Date(post.scheduledDate || post.createdAt).toISOString().split('T')[0];
         if (!postsData[dateKey]) {
           postsData[dateKey] = [];
         }
@@ -49,9 +47,10 @@ const CalendarPage = () => {
       setPosts(postsData);
     } catch (error) {
       console.error('Erro ao carregar posts:', error);
+      const errorData = handleApiError(error);
       toast({
         title: "Erro",
-        description: "Erro ao carregar posts",
+        description: errorData.message,
         variant: "destructive"
       });
     } finally {
@@ -59,43 +58,8 @@ const CalendarPage = () => {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = { ...posts };
-
-    if (platformFilter !== 'all' || postTypeFilter !== 'all') {
-      filtered = {};
-      Object.keys(posts).forEach(dateKey => {
-        const filteredPostsForDate = posts[dateKey].filter(post => {
-          const platformMatch = platformFilter === 'all' || post.platform === platformFilter;
-          const typeMatch = postTypeFilter === 'all' || post.postType === postTypeFilter;
-          return platformMatch && typeMatch;
-        });
-        
-        if (filteredPostsForDate.length > 0) {
-          filtered[dateKey] = filteredPostsForDate;
-        }
-      });
-    }
-
-    setFilteredPosts(filtered);
-  };
-
   const formatDateKey = (date) => {
     return date.toISOString().split('T')[0];
-  };
-
-  const handleDateClick = (date) => {
-    if (!date) return;
-    setSelectedDate(date);
-    const dateKey = formatDateKey(date);
-    const postsForDate = filteredPosts[dateKey] || [];
-    
-    if (postsForDate.length === 1) {
-      setEditingPost(postsForDate[0]);
-    } else {
-      setEditingPost(null);
-    }
-    setShowEditor(true);
   };
 
   const handleNavigateMonth = (direction) => {
@@ -108,49 +72,62 @@ const CalendarPage = () => {
     }
   };
 
-  const handleCreatePost = () => {
-    setEditingPost(null);
-    setSelectedDate(new Date());
-    setShowEditor(true);
-  };
-
-  const handlePostSaved = () => {
-    setShowEditor(false);
-    setEditingPost(null);
-    loadPosts();
-    toast({
-      title: "Sucesso!",
-      description: "Post salvo com sucesso",
-    });
-  };
-
-  const handleMediaUploaded = (mediaData) => {
-    setShowMediaUploader(false);
-    // Aqui você pode fazer algo com os dados da mídia uploadada
-    toast({
-      title: "Sucesso!",
-      description: "Mídia enviada com sucesso",
-    });
-  };
-
-  const getPostTypeIcon = (postType) => {
-    switch (postType) {
-      case 'STORY': return <Camera className="w-4 h-4" />;
-      case 'REELS': return <Video className="w-4 h-4" />;
-      case 'CAROUSEL': return <Grid className="w-4 h-4" />;
-      default: return <ImageIcon className="w-4 h-4" />;
+  const getDaysInMonth = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay();
+    
+    const days = [];
+    
+    // Dias do mês anterior
+    const prevMonth = new Date(year, month, 0);
+    const prevDays = prevMonth.getDate();
+    for (let i = startingDay - 1; i >= 0; i--) {
+      days.push({
+        date: new Date(year, month - 1, prevDays - i),
+        isCurrentMonth: false
+      });
     }
+    
+    // Dias do mês atual
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        date: new Date(year, month, i),
+        isCurrentMonth: true
+      });
+    }
+    
+    // Dias do próximo mês
+    const remainingDays = 42 - days.length;
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({
+        date: new Date(year, month + 1, i),
+        isCurrentMonth: false
+      });
+    }
+    
+    return days;
   };
 
-  const getPlatformColor = (platform) => {
-    switch (platform) {
-      case 'INSTAGRAM': return 'bg-gradient-to-r from-purple-500 to-pink-500';
-      case 'FACEBOOK': return 'bg-blue-600';
-      case 'TWITTER': return 'bg-sky-500';
-      case 'LINKEDIN': return 'bg-blue-700';
-      case 'TIKTOK': return 'bg-black';
-      case 'YOUTUBE': return 'bg-red-600';
-      default: return 'bg-gray-500';
+  const isToday = (date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const getPostsForDate = (date) => {
+    const dateKey = formatDateKey(date);
+    return posts[dateKey] || [];
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'PUBLISHED': return 'bg-green-500';
+      case 'SCHEDULED': return 'bg-blue-500';
+      default: return 'bg-yellow-500';
     }
   };
 
@@ -164,120 +141,136 @@ const CalendarPage = () => {
               <Calendar className="w-6 h-6" />
               Calendário de Postagens
             </h1>
-            <p className="text-gray-600">Gerencie suas postagens de forma visual e organizada</p>
+            <p className="text-gray-600">Visualize suas postagens de forma organizada</p>
           </div>
           
-          <div className="flex items-center gap-2">
+          <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600">
+            <Plus className="w-4 h-4" />
+            Novo Post
+          </Button>
+        </div>
+
+        {/* Calendar Navigation */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-6">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowMediaUploader(true)}
-              className="flex items-center gap-2"
+              onClick={() => handleNavigateMonth(-1)}
             >
-              <Upload className="w-4 h-4" />
-              Upload Mídia
+              <ChevronLeft className="w-4 h-4" />
             </Button>
+            
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleNavigateMonth(0)}
+              >
+                Hoje
+              </Button>
+            </div>
+            
             <Button
-              onClick={handleCreatePost}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              <Plus className="w-4 h-4" />
-              Novo Post
-            </Button>
-          </div>
-        </div>
-
-        {/* Filters and View Controls */}
-        <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-xl border border-gray-200">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filtros:</span>
-          </div>
-          
-          <Select
-            value={platformFilter}
-            onValueChange={setPlatformFilter}
-            className="w-40"
-          >
-            <option value="all">Todas as plataformas</option>
-            <option value="INSTAGRAM">Instagram</option>
-            <option value="FACEBOOK">Facebook</option>
-            <option value="TWITTER">Twitter</option>
-            <option value="LINKEDIN">LinkedIn</option>
-            <option value="TIKTOK">TikTok</option>
-            <option value="YOUTUBE">YouTube</option>
-          </Select>
-
-          <Select
-            value={postTypeFilter}
-            onValueChange={setPostTypeFilter}
-            className="w-40"
-          >
-            <option value="all">Todos os tipos</option>
-            <option value="FEED">Feed</option>
-            <option value="STORY">Story</option>
-            <option value="REELS">Reels</option>
-            <option value="CAROUSEL">Carrossel</option>
-            <option value="IGTV">IGTV</option>
-          </Select>
-
-          <div className="ml-auto flex items-center gap-1">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
-              onClick={() => setViewMode('grid')}
+              onClick={() => handleNavigateMonth(1)}
             >
-              <Grid className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-            >
-              <List className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-        </div>
 
-        {/* Calendar Component */}
-        {loading ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
-            <div className="text-center">
+          {loading ? (
+            <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
               <p className="text-gray-500 mt-2">Carregando calendário...</p>
             </div>
+          ) : (
+            <>
+              {/* Weekday Headers */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {WEEKDAYS.map((day) => (
+                  <div
+                    key={day}
+                    className="text-center text-sm font-medium text-gray-500 py-2"
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {getDaysInMonth().map((day, index) => {
+                  const dayPosts = getPostsForDate(day.date);
+                  const today = isToday(day.date);
+                  
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className={`
+                        min-h-[100px] p-2 rounded-lg border cursor-pointer transition-all
+                        ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
+                        ${today ? 'ring-2 ring-purple-500 border-purple-500' : 'border-gray-200'}
+                        hover:shadow-md hover:border-purple-300
+                      `}
+                    >
+                      <div className={`
+                        text-sm font-medium mb-1
+                        ${today ? 'text-purple-600' : day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                      `}>
+                        {day.date.getDate()}
+                      </div>
+                      
+                      {dayPosts.length > 0 && (
+                        <div className="space-y-1">
+                          {dayPosts.slice(0, 2).map((post, postIndex) => (
+                            <div
+                              key={postIndex}
+                              className={`
+                                text-xs p-1 rounded truncate text-white
+                                ${getStatusColor(post.status)}
+                              `}
+                              title={post.title}
+                            >
+                              {post.title || 'Sem título'}
+                            </div>
+                          ))}
+                          {dayPosts.length > 2 && (
+                            <div className="text-xs text-gray-500">
+                              +{dayPosts.length - 2} mais
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-6 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-yellow-500"></div>
+            <span>Rascunho</span>
           </div>
-        ) : (
-          <CalendarGrid
-            currentDate={currentDate}
-            posts={filteredPosts}
-            selectedDate={selectedDate}
-            onDateClick={handleDateClick}
-            onNavigateMonth={handleNavigateMonth}
-            formatDateKey={formatDateKey}
-            getPostTypeIcon={getPostTypeIcon}
-            getPlatformColor={getPlatformColor}
-          />
-        )}
-
-        {/* Modals */}
-        <AnimatePresence>
-          {showEditor && (
-            <PostEditorSimple
-              post={editingPost}
-              selectedDate={selectedDate}
-              onClose={() => setShowEditor(false)}
-              onSave={handlePostSaved}
-            />
-          )}
-
-          {showMediaUploader && (
-            <MediaUploader
-              onClose={() => setShowMediaUploader(false)}
-              onUpload={handleMediaUploaded}
-            />
-          )}
-        </AnimatePresence>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-blue-500"></div>
+            <span>Agendado</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-green-500"></div>
+            <span>Publicado</span>
+          </div>
+        </div>
       </div>
     </Layout>
   );

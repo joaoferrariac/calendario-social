@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { 
   Upload, 
   Image as ImageIcon, 
@@ -8,73 +7,110 @@ import {
   Trash2, 
   Download, 
   Search, 
-  Filter, 
   Grid3X3, 
   List,
-  Calendar,
-  Camera,
-  Play,
   FileImage,
   FileVideo,
-  Eye
+  Eye,
+  X
 } from 'lucide-react';
 import Layout from '@/components/Layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import MediaUploader from '@/components/MediaUploader';
 import { useToast } from '@/components/ui/use-toast';
-import { mediaAPI } from '@/lib/api';
+import { mediaAPI, handleApiError, formatFileSize } from '@/lib/api';
 
 const MediaPage = () => {
   const [showUploader, setShowUploader] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' ou 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewFile, setPreviewFile] = useState(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Query para buscar arquivos
-  const { data: mediaData, isLoading, error } = useQuery({
-    queryKey: ['media-files', { search: searchTerm, type: filterType }],
-    queryFn: () => mediaAPI.getFiles({ 
-      search: searchTerm, 
-      type: filterType !== 'all' ? filterType : undefined 
-    }),
-    retry: 1
-  });
+  useEffect(() => {
+    loadData();
+  }, [filterType]);
 
-  // Query para estatísticas
-  const { data: statsData } = useQuery({
-    queryKey: ['media-stats'],
-    queryFn: mediaAPI.getStats,
-    retry: 1
-  });
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [mediaData, statsData] = await Promise.all([
+        mediaAPI.getFiles({ type: filterType !== 'all' ? filterType : undefined }),
+        mediaAPI.getStats()
+      ]);
+      
+      setFiles(mediaData.files || []);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Erro ao carregar mídia:', error);
+      const errorData = handleApiError(error);
+      toast({
+        title: "Erro",
+        description: errorData.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Mutation para deletar arquivo
-  const deleteMutation = useMutation({
-    mutationFn: mediaAPI.deleteFile,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['media-files']);
-      queryClient.invalidateQueries(['media-stats']);
+  const handleFileUpload = async (event) => {
+    const selectedFiles = Array.from(event.target.files);
+    if (selectedFiles.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      await mediaAPI.uploadMultipleFiles(selectedFiles, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      toast({
+        title: "Sucesso!",
+        description: `${selectedFiles.length} arquivo(s) enviado(s) com sucesso`,
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      const errorData = handleApiError(error);
+      toast({
+        title: "Erro",
+        description: errorData.message,
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      setShowUploader(false);
+    }
+  };
+
+  const handleDelete = async (fileId) => {
+    if (!window.confirm('Tem certeza que deseja deletar este arquivo?')) return;
+    
+    try {
+      await mediaAPI.deleteFile(fileId);
       toast({
         title: "Sucesso!",
         description: "Arquivo deletado com sucesso",
       });
-    },
-    onError: (error) => {
+      loadData();
+    } catch (error) {
+      console.error('Erro ao deletar:', error);
+      const errorData = handleApiError(error);
       toast({
         title: "Erro",
-        description: error.response?.data?.error || "Erro ao deletar arquivo",
+        description: errorData.message,
         variant: "destructive"
       });
-    }
-  });
-
-  const handleDelete = (fileId) => {
-    if (window.confirm('Tem certeza que deseja deletar este arquivo?')) {
-      deleteMutation.mutate(fileId);
     }
   };
 
@@ -86,22 +122,14 @@ const MediaPage = () => {
     link.click();
   };
 
-  const handleUploadSuccess = () => {
-    setShowUploader(false);
-    queryClient.invalidateQueries(['media-files']);
-    queryClient.invalidateQueries(['media-stats']);
-  };
+  const filteredFiles = files.filter(file => {
+    if (!searchTerm) return true;
+    return file.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           file.originalName?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const files = mediaData?.files || [];
-  const stats = statsData || {};
+  const isImage = (file) => file.mimeType?.startsWith('image/');
+  const isVideo = (file) => file.mimeType?.startsWith('video/');
 
   return (
     <Layout>
@@ -110,298 +138,324 @@ const MediaPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Camera className="w-6 h-6" />
-              Galeria de Mídia
+              <ImageIcon className="w-6 h-6" />
+              Biblioteca de Mídia
             </h1>
-            <p className="text-gray-600">Gerencie seus arquivos de imagem e vídeo</p>
+            <p className="text-gray-600">Gerencie suas imagens e vídeos</p>
           </div>
           
-          <Button
+          <Button 
             onClick={() => setShowUploader(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600"
           >
             <Upload className="w-4 h-4" />
-            Upload Mídia
+            Upload
           </Button>
         </div>
 
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <FileImage className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total de Arquivos</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalFiles || 0}</p>
+        {/* Stats */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <FileImage className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-sm text-gray-500">Total de arquivos</p>
+                </div>
               </div>
             </div>
-          </motion.div>
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <ImageIcon className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.images}</p>
+                  <p className="text-sm text-gray-500">Imagens</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-pink-100 rounded-lg">
+                  <Video className="w-5 h-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.videos}</p>
+                  <p className="text-sm text-gray-500">Vídeos</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <FileVideo className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{formatFileSize(stats.totalSize)}</p>
+                  <p className="text-sm text-gray-500">Tamanho total</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <ImageIcon className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Imagens</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.imageCount || 0}</p>
-              </div>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-xl border border-gray-200">
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Buscar arquivos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-          </motion.div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant={filterType === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterType('all')}
+            >
+              Todos
+            </Button>
+            <Button
+              variant={filterType === 'image' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterType('image')}
+            >
+              <ImageIcon className="w-4 h-4 mr-1" />
+              Imagens
+            </Button>
+            <Button
+              variant={filterType === 'video' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterType('video')}
+            >
+              <Video className="w-4 h-4 mr-1" />
+              Vídeos
+            </Button>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-pink-100 rounded-lg">
-                <FileVideo className="w-6 h-6 text-pink-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Vídeos</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.videoCount || 0}</p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Upload className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Espaço Usado</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatFileSize(stats.totalSize || 0)}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Filtros e Busca */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 items-center w-full">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Buscar arquivos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-500" />
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <option value="all">Todos os tipos</option>
-                  <option value="image">Imagens</option>
-                  <option value="video">Vídeos</option>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
-        {/* Galeria */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-square bg-gray-200 rounded-lg animate-pulse"></div>
-              ))}
-            </div>
-          ) : files.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Camera className="w-8 h-8 text-gray-400" />
+        {/* Upload Modal */}
+        {showUploader && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowUploader(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="bg-white rounded-xl p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Upload de Arquivos</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowUploader(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
-              <p className="text-gray-500 mb-4">Nenhum arquivo encontrado</p>
-              <Button
-                onClick={() => setShowUploader(true)}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              
+              <label className="block">
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors">
+                  <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                  <p className="text-gray-600 mb-2">Arraste arquivos ou clique para selecionar</p>
+                  <p className="text-sm text-gray-400">Imagens e vídeos suportados</p>
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                />
+              </label>
+              
+              {uploading && (
+                <div className="mt-4">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2 text-center">{uploadProgress}% concluído</p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Preview Modal */}
+        {previewFile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+            onClick={() => setPreviewFile(null)}
+          >
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="absolute top-4 right-4 text-white hover:bg-white/20"
+              onClick={() => setPreviewFile(null)}
+            >
+              <X className="w-6 h-6" />
+            </Button>
+            {isImage(previewFile) ? (
+              <img 
+                src={previewFile.url} 
+                alt={previewFile.originalName}
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            ) : (
+              <video 
+                src={previewFile.url} 
+                controls
+                className="max-w-full max-h-[90vh]"
+              />
+            )}
+          </motion.div>
+        )}
+
+        {/* Files Grid/List */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+            <p className="text-gray-500 mt-2">Carregando arquivos...</p>
+          </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+            <ImageIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum arquivo encontrado</h3>
+            <p className="text-gray-500 mb-4">Faça upload de imagens e vídeos para começar</p>
+            <Button onClick={() => setShowUploader(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Upload
+            </Button>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {filteredFiles.map((file) => (
+              <motion.div
+                key={file.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                Fazer Upload
-              </Button>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {files.map((file) => (
-                <motion.div
-                  key={file.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300"
-                >
-                  {file.type === 'image' ? (
-                    <img
-                      src={file.url}
+                <div className="aspect-square bg-gray-100">
+                  {isImage(file) ? (
+                    <img 
+                      src={file.url} 
                       alt={file.originalName}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                      <Play className="w-16 h-16 text-white" />
-                      <video
-                        src={file.url}
-                        className="absolute inset-0 w-full h-full object-cover opacity-50"
-                        muted
-                      />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Video className="w-12 h-12 text-gray-400" />
                     </div>
                   )}
-
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleDownload(file)}
-                        className="bg-white/20 hover:bg-white/30 text-white border-white/20"
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => window.open(file.url, '_blank')}
-                        className="bg-white/20 hover:bg-white/30 text-white border-white/20"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(file.id)}
-                        className="bg-red-500/80 hover:bg-red-600/80"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                </div>
+                
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={() => setPreviewFile(file)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={() => handleDownload(file)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    onClick={() => handleDelete(file.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="p-2">
+                  <p className="text-xs text-gray-600 truncate">{file.originalName || file.filename}</p>
+                  <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 divide-y">
+            {filteredFiles.map((file) => (
+              <div key={file.id} className="flex items-center gap-4 p-4 hover:bg-gray-50">
+                <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                  {isImage(file) ? (
+                    <img 
+                      src={file.url} 
+                      alt={file.originalName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Video className="w-8 h-8 text-gray-400" />
                     </div>
-                  </div>
-
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                    <p className="text-white text-sm font-medium truncate">
-                      {file.originalName}
-                    </p>
-                    <p className="text-white/70 text-xs">
-                      {formatFileSize(file.size)} • {new Date(file.createdAt).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {files.map((file) => (
-                <motion.div
-                  key={file.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center space-x-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex-shrink-0">
-                    {file.type === 'image' ? (
-                      <img
-                        src={file.url}
-                        alt={file.originalName}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center">
-                        <Video className="w-8 h-8 text-white" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {file.originalName}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {file.type === 'image' ? 'Imagem' : 'Vídeo'} • {formatFileSize(file.size)}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Enviado em {new Date(file.createdAt).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDownload(file)}
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(file.url, '_blank')}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(file.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Modal do Media Uploader */}
-      <AnimatePresence>
-        {showUploader && (
-          <MediaUploader
-            onClose={() => setShowUploader(false)}
-            onUpload={handleUploadSuccess}
-          />
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{file.originalName || file.filename}</p>
+                  <p className="text-sm text-gray-500">
+                    {formatFileSize(file.size)} • {new Date(file.createdAt).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setPreviewFile(file)}>
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDelete(file.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </Layout>
   );
 };
