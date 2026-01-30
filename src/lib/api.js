@@ -294,8 +294,17 @@ export const postsAPI = {
 
 // ========== MEDIA API ==========
 
+/**
+ * API de Media com suporte a Multi-Tenant
+ */
 export const mediaAPI = {
-  uploadFile: async (file, onProgress) => {
+  /**
+   * Upload de arquivo
+   * @param {File} file - Arquivo
+   * @param {Function} onProgress - Callback de progresso
+   * @param {string} clientId - ID do cliente (opcional)
+   */
+  uploadFile: async (file, onProgress, clientId = null) => {
     try {
       // Simular progresso
       if (onProgress) {
@@ -305,13 +314,13 @@ export const mediaAPI = {
         }
       }
       
-      // Upload para o Supabase Storage
-      const fileData = await storage.uploadFile(file);
+      // Upload para o Supabase Storage (organizado por cliente)
+      const fileData = await storage.uploadFile(file, 'uploads', clientId);
       
       if (onProgress) onProgress(80);
       
-      // Salvar referência no banco
-      const media = await db.media.create(fileData);
+      // Salvar referência no banco (com client_id)
+      const media = await db.media.create(fileData, clientId);
       
       if (onProgress) onProgress(100);
       
@@ -324,6 +333,7 @@ export const mediaAPI = {
           size: media.size,
           url: media.url,
           path: media.path,
+          clientId: media.client_id,
           createdAt: media.created_at,
         }
       };
@@ -332,7 +342,13 @@ export const mediaAPI = {
     }
   },
 
-  uploadMultipleFiles: async (files, onProgress) => {
+  /**
+   * Upload de múltiplos arquivos
+   * @param {File[]} files - Arquivos
+   * @param {Function} onProgress - Callback de progresso
+   * @param {string} clientId - ID do cliente (opcional)
+   */
+  uploadMultipleFiles: async (files, onProgress, clientId = null) => {
     const results = [];
     
     for (let i = 0; i < files.length; i++) {
@@ -341,16 +357,22 @@ export const mediaAPI = {
           const overallProgress = ((i + progress / 100) / files.length) * 100;
           onProgress(Math.round(overallProgress));
         }
-      });
+      }, clientId);
       results.push(result.file);
     }
     
     return { files: results };
   },
 
+  /**
+   * Buscar arquivos de mídia
+   * @param {Object} params - Parâmetros de filtro
+   * @param {string} params.clientId - ID do cliente (opcional)
+   * @param {string} params.type - Filtrar por tipo MIME (image/, video/)
+   */
   getFiles: async (params = {}) => {
     try {
-      let files = await db.media.getAll();
+      let files = await db.media.getAll(params.clientId);
       
       // Converter formato
       files = files.map(f => ({
@@ -361,6 +383,7 @@ export const mediaAPI = {
         size: f.size,
         url: f.url,
         path: f.path,
+        clientId: f.client_id,
         createdAt: f.created_at,
       }));
       
@@ -391,9 +414,13 @@ export const mediaAPI = {
     }
   },
 
-  getStats: async () => {
+  /**
+   * Estatísticas de mídia
+   * @param {string} clientId - ID do cliente (opcional)
+   */
+  getStats: async (clientId = null) => {
     try {
-      const files = await db.media.getAll();
+      const files = await db.media.getAll(clientId);
       
       const images = files.filter(f => f.mime_type?.startsWith('image/'));
       const videos = files.filter(f => f.mime_type?.startsWith('video/'));

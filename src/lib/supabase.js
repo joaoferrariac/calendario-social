@@ -10,11 +10,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // ========== STORAGE HELPERS ==========
 
 export const storage = {
-  // Upload de arquivo
-  uploadFile: async (file, folder = 'uploads') => {
+  /**
+   * Upload de arquivo
+   * @param {File} file - Arquivo para upload
+   * @param {string} folder - Pasta base (default: 'uploads')
+   * @param {string} clientId - ID do cliente para organização (opcional)
+   */
+  uploadFile: async (file, folder = 'uploads', clientId = null) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `${folder}/${fileName}`;
+    
+    // Organizar por cliente se informado: uploads/client-id/arquivo.jpg
+    const basePath = clientId ? `${folder}/${clientId}` : folder;
+    const filePath = `${basePath}/${fileName}`;
 
     const { data, error } = await supabase.storage
       .from('media')
@@ -49,11 +57,17 @@ export const storage = {
     return true;
   },
 
-  // Listar arquivos
-  listFiles: async (folder = 'uploads') => {
+  /**
+   * Listar arquivos de uma pasta
+   * @param {string} folder - Pasta base
+   * @param {string} clientId - ID do cliente (opcional)
+   */
+  listFiles: async (folder = 'uploads', clientId = null) => {
+    const targetFolder = clientId ? `${folder}/${clientId}` : folder;
+    
     const { data, error } = await supabase.storage
       .from('media')
-      .list(folder, {
+      .list(targetFolder, {
         sortBy: { column: 'created_at', order: 'desc' }
       });
 
@@ -162,17 +176,33 @@ export const db = {
 
   // === MEDIA ===
   media: {
-    getAll: async () => {
-      const { data, error } = await supabase
+    /**
+     * Buscar todos os arquivos de mídia de um cliente
+     * @param {string} clientId - ID do cliente (opcional)
+     */
+    getAll: async (clientId = null) => {
+      let query = supabase
         .from('media')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // Filtrar por client_id se informado
+      if (clientId) {
+        query = query.eq('client_id', clientId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data;
     },
 
-    create: async (fileData) => {
+    /**
+     * Criar registro de mídia
+     * @param {Object} fileData - Dados do arquivo
+     * @param {string} clientId - ID do cliente
+     */
+    create: async (fileData, clientId = null) => {
       const { data, error } = await supabase
         .from('media')
         .insert([{
@@ -181,7 +211,8 @@ export const db = {
           mime_type: fileData.mimeType,
           size: fileData.size,
           url: fileData.url,
-          path: fileData.path
+          path: fileData.path,
+          client_id: clientId  // ← Novo campo
         }])
         .select()
         .single();
