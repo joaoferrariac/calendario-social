@@ -25,15 +25,26 @@ supabase db push
 | 1 | `001_create_clients_table.sql` | Cria tabela `clients` | ZERO |
 | 2 | `002_add_client_id_columns.sql` | Adiciona `client_id` nas tabelas | ZERO |
 | 3 | `003_create_user_clients_table.sql` | Cria relação usuário-cliente | ZERO |
-| 4 | `004_rls_policies.sql` | Row Level Security | CRÍTICO |
+| 4 | `004_row_level_security.sql` | Row Level Security | ⚠️ CRÍTICO |
 
-## Rollback
+## ⚠️ Atenção: Migration 004 (RLS)
 
-Cada migration tem um arquivo de rollback correspondente:
+A migration de RLS é **crítica** e deve ser executada por último, após validar que:
 
-```bash
-# Reverter migration específica
-supabase db reset
+1. ✅ Todos os usuários existentes estão vinculados ao cliente padrão
+2. ✅ Todos os posts/media existentes têm `client_id` preenchido
+3. ✅ O frontend está usando as queries com filtro de cliente
+
+### Rollback de Emergência
+
+Se algo der errado após ativar RLS:
+
+```sql
+-- Desabilitar RLS temporariamente
+ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE posts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE media DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_clients DISABLE ROW LEVEL SECURITY;
 ```
 
 ## Cliente Padrão
