@@ -80,7 +80,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 -- FUNÇÃO HELPER: Verificar se pode criar clientes
 -- ============================================
--- Apenas DESIGNER, ADMIN podem criar clientes
+-- EDITOR, DESIGNER, ADMIN podem criar clientes
 
 CREATE OR REPLACE FUNCTION public.can_create_client()
 RETURNS BOOLEAN AS $$
@@ -92,8 +92,8 @@ BEGIN
     FROM users
     WHERE id = auth.uid();
     
-    -- Permitir DESIGNER, ADMIN, MASTER
-    RETURN user_global_role IN ('DESIGNER', 'ADMIN', 'MASTER');
+    -- Permitir EDITOR, DESIGNER, ADMIN, MASTER (case-insensitive)
+    RETURN UPPER(user_global_role) IN ('EDITOR', 'DESIGNER', 'ADMIN', 'MASTER');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
