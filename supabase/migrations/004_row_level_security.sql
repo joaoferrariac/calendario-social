@@ -27,31 +27,20 @@ BEGIN
 END $$;
 
 -- ============================================
--- FUNÇÃO HELPER: Obter user_id atual
--- ============================================
--- Retorna o ID do usuário autenticado via Supabase Auth
--- ou NULL se não autenticado (para queries anônimas)
-
-CREATE OR REPLACE FUNCTION auth.user_id() 
-RETURNS UUID AS $$
-BEGIN
-    RETURN auth.uid();
-EXCEPTION
-    WHEN others THEN
-        RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ============================================
 -- FUNÇÃO HELPER: Verificar acesso ao cliente
 -- ============================================
 -- Verifica se o usuário atual tem acesso a um cliente específico
 
-CREATE OR REPLACE FUNCTION has_client_access(check_client_id UUID)
+CREATE OR REPLACE FUNCTION public.has_client_access(check_client_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
     -- Cliente padrão sempre permitido
     IF check_client_id = '00000000-0000-0000-0000-000000000001' THEN
+        RETURN TRUE;
+    END IF;
+    
+    -- NULL client_id = cliente padrão (dados legados)
+    IF check_client_id IS NULL THEN
         RETURN TRUE;
     END IF;
     
@@ -68,11 +57,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- FUNÇÃO HELPER: Verificar role do usuário no cliente
 -- ============================================
 
-CREATE OR REPLACE FUNCTION get_user_role_in_client(check_client_id UUID)
+CREATE OR REPLACE FUNCTION public.get_user_role_in_client(check_client_id UUID)
 RETURNS VARCHAR AS $$
 DECLARE
     user_role VARCHAR;
 BEGIN
+    -- Cliente padrão: buscar role global do usuário
+    IF check_client_id IS NULL OR check_client_id = '00000000-0000-0000-0000-000000000001' THEN
+        SELECT role INTO user_role FROM users WHERE id = auth.uid();
+        RETURN user_role;
+    END IF;
+
     SELECT role INTO user_role
     FROM user_clients
     WHERE user_id = auth.uid()
@@ -87,7 +82,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 -- Apenas DESIGNER, ADMIN podem criar clientes
 
-CREATE OR REPLACE FUNCTION can_create_client()
+CREATE OR REPLACE FUNCTION public.can_create_client()
 RETURNS BOOLEAN AS $$
 DECLARE
     user_global_role VARCHAR;
@@ -127,21 +122,21 @@ CREATE POLICY "clients_select_policy" ON clients
 CREATE POLICY "clients_insert_policy" ON clients
     FOR INSERT
     WITH CHECK (
-        can_create_client()
+        public.can_create_client()
     );
 
 -- Policy: UPDATE - Apenas OWNER/ADMIN do cliente podem editar
 CREATE POLICY "clients_update_policy" ON clients
     FOR UPDATE
     USING (
-        get_user_role_in_client(id) IN ('OWNER', 'ADMIN')
+        public.get_user_role_in_client(id) IN ('OWNER', 'ADMIN')
     );
 
 -- Policy: DELETE - Apenas OWNER pode deletar (soft delete via is_active)
 CREATE POLICY "clients_delete_policy" ON clients
     FOR DELETE
     USING (
-        get_user_role_in_client(id) = 'OWNER'
+        public.get_user_role_in_client(id) = 'OWNER'
     );
 
 -- ============================================
@@ -158,7 +153,7 @@ CREATE POLICY "user_clients_select_policy" ON user_clients
         user_id = auth.uid()
         OR
         -- Ou vínculos de clientes onde sou ADMIN/OWNER
-        get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
+        public.get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
     );
 
 -- Policy: INSERT - OWNER/ADMIN podem adicionar usuários ao cliente
@@ -166,17 +161,17 @@ CREATE POLICY "user_clients_insert_policy" ON user_clients
     FOR INSERT
     WITH CHECK (
         -- Criador do cliente pode se auto-vincular
-        (user_id = auth.uid() AND can_create_client())
+        (user_id = auth.uid() AND public.can_create_client())
         OR
         -- OWNER/ADMIN podem vincular outros
-        get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
+        public.get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
     );
 
 -- Policy: UPDATE - OWNER/ADMIN podem editar roles
 CREATE POLICY "user_clients_update_policy" ON user_clients
     FOR UPDATE
     USING (
-        get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
+        public.get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
     );
 
 -- Policy: DELETE - OWNER/ADMIN podem remover usuários
@@ -187,7 +182,7 @@ CREATE POLICY "user_clients_delete_policy" ON user_clients
         user_id = auth.uid()
         OR
         -- OWNER/ADMIN podem remover outros
-        get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
+        public.get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN')
     );
 
 -- ============================================
@@ -200,31 +195,31 @@ ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "posts_select_policy" ON posts
     FOR SELECT
     USING (
-        has_client_access(client_id)
+        public.has_client_access(client_id)
     );
 
 -- Policy: INSERT - Criar posts nos clientes que tenho acesso (exceto READER)
 CREATE POLICY "posts_insert_policy" ON posts
     FOR INSERT
     WITH CHECK (
-        has_client_access(client_id)
-        AND get_user_role_in_client(client_id) NOT IN ('READER')
+        public.has_client_access(client_id)
+        AND public.get_user_role_in_client(client_id) NOT IN ('READER')
     );
 
 -- Policy: UPDATE - Editar posts dos clientes que tenho acesso (exceto READER)
 CREATE POLICY "posts_update_policy" ON posts
     FOR UPDATE
     USING (
-        has_client_access(client_id)
-        AND get_user_role_in_client(client_id) NOT IN ('READER')
+        public.has_client_access(client_id)
+        AND public.get_user_role_in_client(client_id) NOT IN ('READER')
     );
 
 -- Policy: DELETE - Deletar posts (EDITOR+)
 CREATE POLICY "posts_delete_policy" ON posts
     FOR DELETE
     USING (
-        has_client_access(client_id)
-        AND get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN', 'DESIGNER', 'EDITOR')
+        public.has_client_access(client_id)
+        AND public.get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN', 'DESIGNER', 'EDITOR')
     );
 
 -- ============================================
@@ -237,23 +232,23 @@ ALTER TABLE media ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "media_select_policy" ON media
     FOR SELECT
     USING (
-        has_client_access(client_id)
+        public.has_client_access(client_id)
     );
 
 -- Policy: INSERT - Upload nos clientes que tenho acesso (exceto READER)
 CREATE POLICY "media_insert_policy" ON media
     FOR INSERT
     WITH CHECK (
-        has_client_access(client_id)
-        AND get_user_role_in_client(client_id) NOT IN ('READER')
+        public.has_client_access(client_id)
+        AND public.get_user_role_in_client(client_id) NOT IN ('READER')
     );
 
 -- Policy: DELETE - Deletar mídia (EDITOR+)
 CREATE POLICY "media_delete_policy" ON media
     FOR DELETE
     USING (
-        has_client_access(client_id)
-        AND get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN', 'DESIGNER', 'EDITOR')
+        public.has_client_access(client_id)
+        AND public.get_user_role_in_client(client_id) IN ('OWNER', 'ADMIN', 'DESIGNER', 'EDITOR')
     );
 
 -- ============================================
