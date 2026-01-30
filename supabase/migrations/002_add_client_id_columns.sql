@@ -60,19 +60,25 @@ BEGIN
     -- TABELA: users
     -- ============================================
     
-    -- Adicionar coluna role se não existir (para controle de permissão)
+    -- NOTA: A coluna 'role' já existe com constraint users_role_check
+    -- Valores permitidos: ADMIN, DESIGNER, EDITOR, READER (uppercase)
+    -- Não vamos alterar a estrutura existente, apenas garantir que
+    -- usuários sem role recebam um valor padrão
+    
+    -- Verificar se coluna role existe
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name = 'role'
     ) THEN
-        ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'viewer';
+        -- Se não existir, criar com valores em UPPERCASE (padrão do sistema)
+        ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'READER'
+            CHECK (role IN ('ADMIN', 'DESIGNER', 'EDITOR', 'READER'));
         RAISE NOTICE 'Coluna role adicionada em users';
+    ELSE
+        -- Se existir, apenas atualizar NULL para READER
+        UPDATE users SET role = 'READER' WHERE role IS NULL;
+        RAISE NOTICE 'Usuários sem role atualizados para READER';
     END IF;
-    
-    -- Atualizar role para valores válidos
-    UPDATE users 
-    SET role = LOWER(role)
-    WHERE role IS NOT NULL;
 
 END $$;
 
@@ -96,7 +102,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_client_date ON posts(client_id, scheduled_d
 
 COMMENT ON COLUMN posts.client_id IS 'ID do cliente/tenant dono deste post';
 COMMENT ON COLUMN media.client_id IS 'ID do cliente/tenant dono desta mídia';
-COMMENT ON COLUMN users.role IS 'Papel do usuário: owner, admin, designer, editor, viewer';
+-- NOTA: Coluna users.role já possui comentário/constraint existente
 
 -- ============================================
 -- VERIFICAÇÃO
