@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import useAuthStore from '@/lib/authStore';
+import { ClientProvider } from '@/lib/ClientContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Páginas
@@ -27,7 +28,8 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/dashboard" replace />;
   }
   
-  return children;
+  // Envolver com ClientProvider para que as páginas tenham acesso ao cliente
+  return <ClientProvider>{children}</ClientProvider>;
 };
 
 // Componente de loading
