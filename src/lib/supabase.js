@@ -273,6 +273,127 @@ export const db = {
       if (error) throw error;
       return true;
     }
+  },
+
+  // === CLIENTS (Multi-Tenant) ===
+  clients: {
+    /**
+     * Buscar todos os clientes (apenas para ADMIN)
+     */
+    getAll: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+
+    /**
+     * Buscar cliente por ID
+     */
+    getById: async (id) => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+
+    /**
+     * Buscar cliente por slug
+     */
+    getBySlug: async (slug) => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('slug', slug)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+
+    /**
+     * Criar novo cliente
+     * @param {Object} client - Dados do cliente
+     * @param {string} userId - ID do usuário criador (será OWNER)
+     */
+    create: async (client, userId) => {
+      // 1. Criar o cliente
+      const { data: newClient, error: clientError } = await supabase
+        .from('clients')
+        .insert([{
+          name: client.name,
+          slug: client.slug,
+          logo_url: client.logoUrl || null,
+          primary_color: client.primaryColor || '#6366f1',
+          secondary_color: client.secondaryColor || '#8b5cf6',
+          tone_of_voice: client.toneOfVoice || null,
+          plan: client.plan || 'free',
+          is_active: true,
+          created_by: userId
+        }])
+        .select()
+        .single();
+      
+      if (clientError) throw clientError;
+
+      // 2. Vincular o usuário criador como OWNER
+      const { error: linkError } = await supabase
+        .from('user_clients')
+        .insert([{
+          user_id: userId,
+          client_id: newClient.id,
+          role: 'OWNER',
+          is_default: false  // Não alterar o default atual
+        }]);
+      
+      if (linkError) throw linkError;
+
+      return newClient;
+    },
+
+    /**
+     * Atualizar cliente
+     */
+    update: async (id, client) => {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({
+          name: client.name,
+          slug: client.slug,
+          logo_url: client.logoUrl,
+          primary_color: client.primaryColor,
+          secondary_color: client.secondaryColor,
+          tone_of_voice: client.toneOfVoice,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+
+    /**
+     * Desativar cliente (soft delete)
+     */
+    delete: async (id) => {
+      const { error } = await supabase
+        .from('clients')
+        .update({ is_active: false })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return true;
+    }
   }
 };
 

@@ -15,6 +15,7 @@ import PostEditorPage from '@/pages/PostEditorPage';
 import MediaPage from '@/pages/MediaPage';
 import UsersPage from '@/pages/UsersPage';
 import ProfilePage from '@/pages/ProfilePage';
+import ClientsPage from '@/pages/ClientsPage';
 
 // Componente de rota protegida
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -124,6 +125,16 @@ function App() {
             element={
               <ProtectedRoute roles={['ADMIN', 'EDITOR']}>
                 <MediaPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Rota de Clientes - Multi-Tenant (DESIGNER/ADMIN) */}
+          <Route 
+            path="/clients" 
+            element={
+              <ProtectedRoute roles={['DESIGNER', 'ADMIN', 'MASTER']}>
+                <ClientsPage />
               </ProtectedRoute>
             } 
           />
