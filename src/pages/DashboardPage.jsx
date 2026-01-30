@@ -8,12 +8,14 @@ import {
   Plus,
   FileText,
   Image,
-  TrendingUp
+  TrendingUp,
+  Building2
 } from 'lucide-react';
 import Layout from '@/components/Layout/Layout';
 import { Button } from '@/components/ui/button';
 import { postsAPI, mediaAPI } from '@/lib/api';
 import useAuthStore from '@/lib/authStore';
+import { usePermissions } from '@/lib/usePermissions';
 
 const MetricCard = ({ title, value, subtitle, icon: Icon, color, isLoading, onClick }) => (
   <motion.div
@@ -43,6 +45,7 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, color, isLoading, onCl
 
 const QuickActions = () => {
   const navigate = useNavigate();
+  const { canCreateClient } = usePermissions();
   
   return (
     <motion.div
@@ -67,6 +70,23 @@ const QuickActions = () => {
             <Plus className="w-5 h-5 ml-auto" />
           </div>
         </Button>
+
+        {/* Botão Cadastrar Cliente - Apenas DESIGNER/ADMIN/MASTER */}
+        {canCreateClient && (
+          <Button 
+            onClick={() => navigate('/clients')}
+            className="h-auto p-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 group"
+          >
+            <div className="flex items-center w-full">
+              <Building2 className="w-8 h-8 mr-4 group-hover:scale-110 transition-transform" />
+              <div className="text-left">
+                <p className="font-medium text-white">Cadastrar Cliente</p>
+                <p className="text-xs opacity-90">Criar novo ambiente</p>
+              </div>
+              <Plus className="w-5 h-5 ml-auto" />
+            </div>
+          </Button>
+        )}
         
         <Button 
           onClick={() => navigate('/calendar')}
