@@ -64,14 +64,28 @@ export const storage = {
 
 // ========== DATABASE HELPERS ==========
 
+// ID do cliente padrão (fallback para compatibilidade)
+const DEFAULT_CLIENT_ID = '00000000-0000-0000-0000-000000000001';
+
 export const db = {
   // === POSTS ===
   posts: {
-    getAll: async () => {
-      const { data, error } = await supabase
+    /**
+     * Buscar todos os posts de um cliente
+     * @param {string} clientId - ID do cliente (opcional, usa default se não informado)
+     */
+    getAll: async (clientId = null) => {
+      let query = supabase
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // Filtrar por client_id se informado
+      if (clientId) {
+        query = query.eq('client_id', clientId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data;
@@ -88,7 +102,12 @@ export const db = {
       return data;
     },
 
-    create: async (post) => {
+    /**
+     * Criar um novo post
+     * @param {Object} post - Dados do post
+     * @param {string} clientId - ID do cliente (obrigatório para novos posts)
+     */
+    create: async (post, clientId = DEFAULT_CLIENT_ID) => {
       const { data, error } = await supabase
         .from('posts')
         .insert([{
@@ -98,7 +117,8 @@ export const db = {
           scheduled_date: post.scheduledDate,
           scheduled_time: post.scheduledTime,
           media_url: post.mediaUrl,
-          media_path: post.mediaPath
+          media_path: post.mediaPath,
+          client_id: clientId  // ← Novo campo
         }])
         .select()
         .single();
@@ -119,6 +139,7 @@ export const db = {
           media_url: post.mediaUrl,
           media_path: post.mediaPath,
           updated_at: new Date().toISOString()
+          // Nota: client_id NÃO é alterado no update (post não muda de cliente)
         })
         .eq('id', id)
         .select()

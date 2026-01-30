@@ -121,10 +121,25 @@ export const authAPI = {
 
 // ========== POSTS API ==========
 
+/**
+ * API de Posts com suporte a Multi-Tenant
+ * 
+ * O clientId deve ser passado como parâmetro nas funções que precisam filtrar.
+ * Se não for passado, usa o cliente padrão (compatibilidade retroativa).
+ */
 export const postsAPI = {
+  /**
+   * Buscar posts de um cliente
+   * @param {Object} params - Parâmetros de filtro
+   * @param {string} params.clientId - ID do cliente (opcional)
+   * @param {string} params.status - Filtrar por status
+   * @param {string} params.startDate - Data inicial
+   * @param {string} params.endDate - Data final
+   */
   getPosts: async (params = {}) => {
     try {
-      let posts = await db.posts.getAll();
+      // Passar clientId para a query do banco
+      let posts = await db.posts.getAll(params.clientId);
       
       // Converter campos do banco para o formato do app
       posts = posts.map(post => ({
@@ -136,6 +151,7 @@ export const postsAPI = {
         scheduledTime: post.scheduled_time,
         mediaUrl: post.media_url,
         mediaPath: post.media_path,
+        clientId: post.client_id,  // ← Incluir client_id na resposta
         createdAt: post.created_at,
         updatedAt: post.updated_at,
       }));
@@ -174,6 +190,7 @@ export const postsAPI = {
           scheduledTime: post.scheduled_time,
           mediaUrl: post.media_url,
           mediaPath: post.media_path,
+          clientId: post.client_id,  // ← Incluir client_id
           createdAt: post.created_at,
           updatedAt: post.updated_at,
         }
@@ -183,7 +200,12 @@ export const postsAPI = {
     }
   },
 
-  createPost: async (postData) => {
+  /**
+   * Criar novo post
+   * @param {Object} postData - Dados do post
+   * @param {string} clientId - ID do cliente (obrigatório)
+   */
+  createPost: async (postData, clientId) => {
     try {
       const post = await db.posts.create({
         title: postData.title,
@@ -193,7 +215,7 @@ export const postsAPI = {
         scheduledTime: postData.scheduledTime,
         mediaUrl: postData.mediaUrl,
         mediaPath: postData.mediaPath,
-      });
+      }, clientId);  // ← Passar clientId para o banco
       
       return { 
         post: {
