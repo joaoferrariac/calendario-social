@@ -16,10 +16,12 @@ import {
   Settings,
   Bell,
   Search,
-  Plus
+  Plus,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useAuthStore from '@/lib/authStore';
+import ClientSwitcher from '@/components/ClientSwitcher';
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,27 +39,33 @@ const Layout = ({ children }) => {
       name: 'Início',
       icon: Home,
       path: '/dashboard',
-      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER']
+      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER', 'DESIGNER']
     },
     {
       name: 'Calendário',
       icon: Calendar,
       path: '/calendar',
-      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER'],
+      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER', 'DESIGNER'],
       badge: 'Novo'
     },
     {
       name: 'Posts Instagram',
       icon: Instagram,
       path: '/posts',
-      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER'],
+      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER', 'DESIGNER'],
       highlight: true
     },
     {
       name: 'Mídia',
       icon: Image,
       path: '/media',
-      roles: ['MASTER', 'ADMIN', 'EDITOR']
+      roles: ['MASTER', 'ADMIN', 'EDITOR', 'DESIGNER']
+    },
+    {
+      name: 'Clientes',
+      icon: Building2,
+      path: '/clients',
+      roles: ['MASTER', 'ADMIN', 'DESIGNER']
     },
     {
       name: 'Usuários',
@@ -95,6 +103,14 @@ const Layout = ({ children }) => {
         >
           <X className="w-5 h-5" />
         </Button>
+      </div>
+
+      {/* Client Switcher - Multi-Tenant */}
+      <div className="px-4 pt-4">
+        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">
+          Cliente Ativo
+        </div>
+        <ClientSwitcher />
       </div>
 
       {/* Quick Actions */}
