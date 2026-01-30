@@ -129,11 +129,11 @@ function App() {
             } 
           />
           
-          {/* Rota de Clientes - Multi-Tenant (DESIGNER/ADMIN) */}
+          {/* Rota de Clientes - Multi-Tenant */}
           <Route 
             path="/clients" 
             element={
-              <ProtectedRoute roles={['DESIGNER', 'ADMIN', 'MASTER']}>
+              <ProtectedRoute roles={['EDITOR', 'DESIGNER', 'ADMIN', 'MASTER']}>
                 <ClientsPage />
               </ProtectedRoute>
             } 
@@ -142,7 +142,7 @@ function App() {
           <Route 
             path="/users" 
             element={
-              <ProtectedRoute roles={['ADMIN']}>
+              <ProtectedRoute roles={['EDITOR', 'DESIGNER', 'ADMIN', 'MASTER']}>
                 <UsersPage />
               </ProtectedRoute>
             } 

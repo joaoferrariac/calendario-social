@@ -160,34 +160,40 @@ const useAuthStore = create(
       // Verificar permissões
       hasRole: (role) => {
         const state = get();
+        const userRole = state.user?.role?.toUpperCase();
         // MASTER tem todas as permissões
-        if (state.user?.role === 'MASTER') return true;
-        return state.user?.role === role;
+        if (userRole === 'MASTER') return true;
+        return userRole === role?.toUpperCase();
       },
 
       hasAnyRole: (roles) => {
         const state = get();
+        const userRole = state.user?.role?.toUpperCase();
         // MASTER tem todas as permissões
-        if (state.user?.role === 'MASTER') return true;
-        return roles.includes(state.user?.role);
+        if (userRole === 'MASTER') return true;
+        // Comparar em uppercase
+        const upperRoles = roles.map(r => r?.toUpperCase());
+        return upperRoles.includes(userRole);
       },
 
       // Verificar se é admin ou master
       isAdmin: () => {
         const state = get();
-        return ['ADMIN', 'MASTER'].includes(state.user?.role);
+        const userRole = state.user?.role?.toUpperCase();
+        return ['ADMIN', 'MASTER'].includes(userRole);
       },
 
       // Verificar se é master
       isMaster: () => {
         const state = get();
-        return state.user?.role === 'MASTER';
+        return state.user?.role?.toUpperCase() === 'MASTER';
       },
 
       // Verificar se pode editar
       canEdit: () => {
         const state = get();
-        return ['ADMIN', 'EDITOR', 'MASTER'].includes(state.user?.role);
+        const userRole = state.user?.role?.toUpperCase();
+        return ['ADMIN', 'EDITOR', 'DESIGNER', 'MASTER'].includes(userRole);
       }
     }),
     {
