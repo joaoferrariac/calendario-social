@@ -42,11 +42,17 @@ export const authAPI = {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: user.role?.toUpperCase() || 'READER', // Garantir role em maiúsculo
         avatar: user.avatar,
       }));
       
-      return { user, token };
+      return { 
+        user: {
+          ...user,
+          role: user.role?.toUpperCase() || 'READER'
+        }, 
+        token 
+      };
     } catch (error) {
       throw error;
     }

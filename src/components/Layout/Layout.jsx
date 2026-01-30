@@ -67,8 +67,11 @@ const Layout = ({ children }) => {
     }
   ];
 
+  // Normalizar o role para maiúsculo
+  const userRole = user?.role?.toUpperCase() || '';
+  
   const filteredMenuItems = menuItems.filter(item => 
-    user?.role === 'MASTER' || item.roles.includes(user?.role)
+    userRole === 'MASTER' || item.roles.includes(userRole)
   );
 
   const SidebarContent = () => (
@@ -106,7 +109,7 @@ const Layout = ({ children }) => {
         
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" size="sm" className="bg-slate-700 hover:bg-slate-600 text-white border-0">
-            <Activity className="w-4 h-4 mr-1" />
+            <BarChart3 className="w-4 h-4 mr-1" />
             Stories
           </Button>
           <Button variant="secondary" size="sm" className="bg-slate-700 hover:bg-slate-600 text-white border-0">
