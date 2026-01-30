@@ -1,252 +1,307 @@
-// API Mock - Dados armazenados localmente
-// TODO: Substituir por chamadas reais ao backend quando implementado
+// API com Supabase
+import { supabase, storage, db } from './supabase';
 
-const STORAGE_KEYS = {
-  POSTS: 'calendar_posts',
-  MEDIA: 'calendar_media',
-  USER: 'calendar_user',
+// ========== HELPERS ==========
+
+export const handleApiError = (error) => {
+  console.error('API Error:', error);
+  return {
+    message: error.message || 'Ocorreu um erro inesperado',
+    status: error.status || 500,
+  };
 };
 
-// Dados iniciais de demonstração
-const getInitialPosts = () => [
-  {
-    id: '1',
-    title: 'Post de Exemplo',
-    content: 'Este é um post de demonstração do sistema.',
-    scheduledDate: new Date().toISOString(),
-    status: 'DRAFT',
-    mediaUrl: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-const getInitialMedia = () => [];
-
-// Helpers para localStorage
-const getFromStorage = (key, defaultValue) => {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : defaultValue;
-  } catch {
-    return defaultValue;
-  }
+export const formatFileSize = (bytes) => {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const saveToStorage = (key, data) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (error) {
-    console.error('Erro ao salvar no localStorage:', error);
-  }
-};
-
-// ========== AUTH API (Mock) ==========
+// ========== AUTH API ==========
 
 export const authAPI = {
   login: async (email, password) => {
-    // Simular delay de rede
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Login simples de demonstração
-    if (email && password) {
-      const user = {
-        id: '1',
-        name: 'Usuário Demo',
-        email: email,
-        role: 'ADMIN',
-        createdAt: new Date().toISOString(),
-      };
+    try {
+      // Buscar usuário no banco
+      const user = await db.users.getByEmail(email);
       
-      const token = 'demo_token_' + Date.now();
+      if (!user) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      if (user.password !== password) {
+        throw new Error('Senha incorreta');
+      }
+      
+      // Criar token simples
+      const token = 'token_' + Date.now();
       localStorage.setItem('auth_token', token);
-      saveToStorage(STORAGE_KEYS.USER, user);
+      localStorage.setItem('auth_user', JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+      }));
       
       return { user, token };
+    } catch (error) {
+      throw error;
     }
-    
-    throw new Error('Email ou senha inválidos');
   },
 
   register: async (userData) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const user = {
-      id: Date.now().toString(),
-      name: userData.name || 'Novo Usuário',
-      email: userData.email,
-      role: 'VIEWER',
-      createdAt: new Date().toISOString(),
-    };
-    
-    const token = 'demo_token_' + Date.now();
-    localStorage.setItem('auth_token', token);
-    saveToStorage(STORAGE_KEYS.USER, user);
-    
-    return { user, token };
+    try {
+      const user = await db.users.create({
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
+        role: 'user'
+      });
+      
+      const token = 'token_' + Date.now();
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('auth_user', JSON.stringify(user));
+      
+      return { user, token };
+    } catch (error) {
+      throw error;
+    }
   },
 
   verifyToken: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
     const token = localStorage.getItem('auth_token');
-    const user = getFromStorage(STORAGE_KEYS.USER, null);
+    const userStr = localStorage.getItem('auth_user');
     
-    if (token && user) {
+    if (token && userStr) {
+      const user = JSON.parse(userStr);
       return { user };
     }
     
     throw new Error('Token inválido');
   },
 
-  updateProfile: async (profileData) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+  logout: async () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    return { success: true };
+  },
 
-    const user = getFromStorage(STORAGE_KEYS.USER, null);
+  getCurrentUser: () => {
+    const userStr = localStorage.getItem('auth_user');
+    return userStr ? JSON.parse(userStr) : null;
+  },
+
+  updateProfile: async (profileData) => {
+    const user = authAPI.getCurrentUser();
     if (!user) throw new Error('Usuário não encontrado');
     
-    const updatedUser = { ...user, ...profileData, updatedAt: new Date().toISOString() };
-    saveToStorage(STORAGE_KEYS.USER, updatedUser);
+    const updatedUser = await db.users.update(user.id, profileData);
+    localStorage.setItem('auth_user', JSON.stringify(updatedUser));
     
     return { user: updatedUser };
   },
 
-  changePassword: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+  changePassword: async (currentPassword, newPassword) => {
+    const user = authAPI.getCurrentUser();
+    if (!user) throw new Error('Usuário não encontrado');
+    
+    await db.users.update(user.id, { password: newPassword });
     return { success: true, message: 'Senha alterada com sucesso' };
   },
 };
 
-// ========== POSTS API (Mock) ==========
+// ========== POSTS API ==========
 
 export const postsAPI = {
   getPosts: async (params = {}) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    let posts = getFromStorage(STORAGE_KEYS.POSTS, getInitialPosts());
-    
-    // Filtrar por status
-    if (params.status) {
-      posts = posts.filter((p) => p.status === params.status);
+    try {
+      let posts = await db.posts.getAll();
+      
+      // Converter campos do banco para o formato do app
+      posts = posts.map(post => ({
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        status: post.status,
+        scheduledDate: post.scheduled_date,
+        scheduledTime: post.scheduled_time,
+        mediaUrl: post.media_url,
+        mediaPath: post.media_path,
+        createdAt: post.created_at,
+        updatedAt: post.updated_at,
+      }));
+      
+      // Filtrar por status
+      if (params.status) {
+        posts = posts.filter((p) => p.status === params.status);
+      }
+      
+      // Filtrar por data
+      if (params.startDate && params.endDate) {
+        posts = posts.filter((p) => {
+          if (!p.scheduledDate) return false;
+          const date = new Date(p.scheduledDate);
+          return date >= new Date(params.startDate) && date <= new Date(params.endDate);
+        });
+      }
+      
+      return { posts, total: posts.length };
+    } catch (error) {
+      throw error;
     }
-    
-    // Filtrar por data
-    if (params.startDate && params.endDate) {
-      posts = posts.filter((p) => {
-        const date = new Date(p.scheduledDate);
-        return date >= new Date(params.startDate) && date <= new Date(params.endDate);
-      });
-    }
-    
-    // Ordenar por data
-    posts.sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
-    
-    return { posts, total: posts.length };
   },
 
   getPost: async (id) => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const posts = getFromStorage(STORAGE_KEYS.POSTS, getInitialPosts());
-    const post = posts.find((p) => p.id === id);
-    
-    if (!post) throw new Error('Post não encontrado');
-    
-    return { post };
+    try {
+      const post = await db.posts.getById(id);
+      
+      return { 
+        post: {
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          status: post.status,
+          scheduledDate: post.scheduled_date,
+          scheduledTime: post.scheduled_time,
+          mediaUrl: post.media_url,
+          mediaPath: post.media_path,
+          createdAt: post.created_at,
+          updatedAt: post.updated_at,
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 
   createPost: async (postData) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const posts = getFromStorage(STORAGE_KEYS.POSTS, getInitialPosts());
-    
-    const newPost = {
-      id: Date.now().toString(),
-      ...postData,
-      status: postData.status || 'DRAFT',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    posts.push(newPost);
-    saveToStorage(STORAGE_KEYS.POSTS, posts);
-    
-    return { post: newPost };
+    try {
+      const post = await db.posts.create({
+        title: postData.title,
+        content: postData.content,
+        status: postData.status || 'DRAFT',
+        scheduledDate: postData.scheduledDate,
+        scheduledTime: postData.scheduledTime,
+        mediaUrl: postData.mediaUrl,
+        mediaPath: postData.mediaPath,
+      });
+      
+      return { 
+        post: {
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          status: post.status,
+          scheduledDate: post.scheduled_date,
+          scheduledTime: post.scheduled_time,
+          mediaUrl: post.media_url,
+          mediaPath: post.media_path,
+          createdAt: post.created_at,
+          updatedAt: post.updated_at,
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 
   updatePost: async (id, postData) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const posts = getFromStorage(STORAGE_KEYS.POSTS, getInitialPosts());
-    const index = posts.findIndex((p) => p.id === id);
-    
-    if (index === -1) throw new Error('Post não encontrado');
-    
-    posts[index] = {
-      ...posts[index],
-      ...postData,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    saveToStorage(STORAGE_KEYS.POSTS, posts);
-    
-    return { post: posts[index] };
+    try {
+      const post = await db.posts.update(id, {
+        title: postData.title,
+        content: postData.content,
+        status: postData.status,
+        scheduledDate: postData.scheduledDate,
+        scheduledTime: postData.scheduledTime,
+        mediaUrl: postData.mediaUrl,
+        mediaPath: postData.mediaPath,
+      });
+      
+      return { 
+        post: {
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          status: post.status,
+          scheduledDate: post.scheduled_date,
+          scheduledTime: post.scheduled_time,
+          mediaUrl: post.media_url,
+          mediaPath: post.media_path,
+          createdAt: post.created_at,
+          updatedAt: post.updated_at,
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 
   deletePost: async (id) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const posts = getFromStorage(STORAGE_KEYS.POSTS, getInitialPosts());
-    const filtered = posts.filter((p) => p.id !== id);
-    
-    saveToStorage(STORAGE_KEYS.POSTS, filtered);
-    
-    return { success: true };
+    try {
+      await db.posts.delete(id);
+      return { success: true };
+    } catch (error) {
+      throw error;
+    }
   },
 
   getStats: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const posts = getFromStorage(STORAGE_KEYS.POSTS, getInitialPosts());
-    
-    return {
-      total: posts.length,
-      draft: posts.filter((p) => p.status === 'DRAFT').length,
-      scheduled: posts.filter((p) => p.status === 'SCHEDULED').length,
-      published: posts.filter((p) => p.status === 'PUBLISHED').length,
-    };
+    try {
+      const posts = await db.posts.getAll();
+      
+      return {
+        total: posts.length,
+        draft: posts.filter((p) => p.status === 'DRAFT').length,
+        scheduled: posts.filter((p) => p.status === 'SCHEDULED').length,
+        published: posts.filter((p) => p.status === 'PUBLISHED').length,
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 };
 
-// ========== MEDIA API (Mock) ==========
+// ========== MEDIA API ==========
 
 export const mediaAPI = {
   uploadFile: async (file, onProgress) => {
-    // Simular progresso de upload
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      if (onProgress) onProgress(i);
+    try {
+      // Simular progresso
+      if (onProgress) {
+        for (let i = 0; i <= 50; i += 10) {
+          await new Promise(r => setTimeout(r, 50));
+          onProgress(i);
+        }
+      }
+      
+      // Upload para o Supabase Storage
+      const fileData = await storage.uploadFile(file);
+      
+      if (onProgress) onProgress(80);
+      
+      // Salvar referência no banco
+      const media = await db.media.create(fileData);
+      
+      if (onProgress) onProgress(100);
+      
+      return { 
+        file: {
+          id: media.id,
+          filename: media.filename,
+          originalName: media.original_name,
+          mimeType: media.mime_type,
+          size: media.size,
+          url: media.url,
+          path: media.path,
+          createdAt: media.created_at,
+        }
+      };
+    } catch (error) {
+      throw error;
     }
-
-    const media = getFromStorage(STORAGE_KEYS.MEDIA, getInitialMedia());
-    
-    // Criar URL local para o arquivo
-    const url = URL.createObjectURL(file);
-    
-    const newMedia = {
-      id: Date.now().toString(),
-      filename: file.name,
-      originalName: file.name,
-      mimeType: file.type,
-      size: file.size,
-      url: url,
-      createdAt: new Date().toISOString(),
-    };
-    
-    media.push(newMedia);
-    saveToStorage(STORAGE_KEYS.MEDIA, media);
-    
-    return { file: newMedia };
   },
 
   uploadMultipleFiles: async (files, onProgress) => {
@@ -266,111 +321,119 @@ export const mediaAPI = {
   },
 
   getFiles: async (params = {}) => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    let media = getFromStorage(STORAGE_KEYS.MEDIA, getInitialMedia());
-    
-    // Filtrar por tipo
-    if (params.type) {
-      media = media.filter((m) => m.mimeType.startsWith(params.type));
+    try {
+      let files = await db.media.getAll();
+      
+      // Converter formato
+      files = files.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        originalName: f.original_name,
+        mimeType: f.mime_type,
+        size: f.size,
+        url: f.url,
+        path: f.path,
+        createdAt: f.created_at,
+      }));
+      
+      // Filtrar por tipo
+      if (params.type) {
+        files = files.filter((f) => f.mimeType?.startsWith(params.type));
+      }
+      
+      return { files, total: files.length };
+    } catch (error) {
+      throw error;
     }
-    
-    return { files: media, total: media.length };
   },
 
   deleteFile: async (id) => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const media = getFromStorage(STORAGE_KEYS.MEDIA, getInitialMedia());
-    const filtered = media.filter((m) => m.id !== id);
-    
-    saveToStorage(STORAGE_KEYS.MEDIA, filtered);
-    
-    return { success: true };
+    try {
+      // Buscar arquivo para pegar o path
+      const files = await db.media.getAll();
+      const file = files.find(f => f.id === id);
+      
+      if (file) {
+        await db.media.delete(id, file.path);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      throw error;
+    }
   },
 
   getStats: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const media = getFromStorage(STORAGE_KEYS.MEDIA, getInitialMedia());
-    
-    return {
-      total: media.length,
-      images: media.filter((m) => m.mimeType.startsWith('image/')).length,
-      videos: media.filter((m) => m.mimeType.startsWith('video/')).length,
-      totalSize: media.reduce((acc, m) => acc + m.size, 0),
-    };
+    try {
+      const files = await db.media.getAll();
+      
+      const images = files.filter(f => f.mime_type?.startsWith('image/'));
+      const videos = files.filter(f => f.mime_type?.startsWith('video/'));
+      
+      return {
+        total: files.length,
+        images: images.length,
+        videos: videos.length,
+        totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 };
 
-// ========== USERS API (Mock) ==========
+// ========== USERS API ==========
 
 export const usersAPI = {
   getUsers: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const currentUser = getFromStorage(STORAGE_KEYS.USER, null);
-    const users = currentUser ? [currentUser] : [];
-    
-    return { users, total: users.length };
+    try {
+      const users = await db.users.getAll();
+      return { users };
+    } catch (error) {
+      throw error;
+    }
   },
 
   getUser: async (id) => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    try {
+      const user = await db.users.getById(id);
+      return { user };
+    } catch (error) {
+      throw error;
+    }
+  },
 
-    const user = getFromStorage(STORAGE_KEYS.USER, null);
-    
-    if (!user || user.id !== id) throw new Error('Usuário não encontrado');
-    
-    return { user };
+  createUser: async (userData) => {
+    try {
+      const user = await db.users.create(userData);
+      return { user };
+    } catch (error) {
+      throw error;
+    }
   },
 
   updateUser: async (id, userData) => {
-    return authAPI.updateProfile(userData);
+    try {
+      const user = await db.users.update(id, userData);
+      return { user };
+    } catch (error) {
+      throw error;
+    }
   },
 
-  deleteUser: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    return { success: true };
-  },
-
-  getStats: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    
-    return {
-      total: 1,
-      admins: 1,
-      editors: 0,
-      viewers: 0,
-    };
+  deleteUser: async (id) => {
+    try {
+      await db.users.delete(id);
+      return { success: true };
+    } catch (error) {
+      throw error;
+    }
   },
 };
 
-// ========== HELPER FUNCTIONS ==========
-
-export const handleApiError = (error) => {
-  return {
-    message: error.message || 'Erro desconhecido',
-    status: 0,
-  };
-};
-
-export const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-// Export default para compatibilidade
-const api = {
+export default {
   auth: authAPI,
   posts: postsAPI,
   media: mediaAPI,
   users: usersAPI,
 };
-
-export default api;

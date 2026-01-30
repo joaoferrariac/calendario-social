@@ -10,6 +10,7 @@ import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import CalendarPage from '@/pages/CalendarPage';
 import PostsPage from '@/pages/PostsPage';
+import PostEditorPage from '@/pages/PostEditorPage';
 import MediaPage from '@/pages/MediaPage';
 import UsersPage from '@/pages/UsersPage';
 import ProfilePage from '@/pages/ProfilePage';
@@ -94,6 +95,24 @@ function App() {
                 <ErrorBoundary>
                   <PostsPage />
                 </ErrorBoundary>
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/posts/new" 
+            element={
+              <ProtectedRoute roles={['ADMIN', 'EDITOR']}>
+                <PostEditorPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/posts/edit/:id" 
+            element={
+              <ProtectedRoute roles={['ADMIN', 'EDITOR']}>
+                <PostEditorPage />
               </ProtectedRoute>
             } 
           />

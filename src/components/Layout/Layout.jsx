@@ -16,9 +16,7 @@ import {
   Settings,
   Bell,
   Search,
-  Plus,
-  TrendingUp,
-  Activity
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import useAuthStore from '@/lib/authStore';
@@ -39,45 +37,38 @@ const Layout = ({ children }) => {
       name: 'Início',
       icon: Home,
       path: '/dashboard',
-      roles: ['ADMIN', 'EDITOR', 'READER']
+      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER']
     },
     {
       name: 'Calendário',
       icon: Calendar,
       path: '/calendar',
-      roles: ['ADMIN', 'EDITOR', 'READER'],
+      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER'],
       badge: 'Novo'
     },
     {
       name: 'Posts Instagram',
       icon: Instagram,
       path: '/posts',
-      roles: ['ADMIN', 'EDITOR', 'READER'],
+      roles: ['MASTER', 'ADMIN', 'EDITOR', 'READER'],
       highlight: true
     },
     {
       name: 'Mídia',
       icon: Image,
       path: '/media',
-      roles: ['ADMIN', 'EDITOR']
-    },
-    {
-      name: 'Analytics',
-      icon: TrendingUp,
-      path: '/analytics',
-      roles: ['ADMIN', 'EDITOR'],
-      badge: 'Pro'
+      roles: ['MASTER', 'ADMIN', 'EDITOR']
     },
     {
       name: 'Usuários',
       icon: Users,
       path: '/users',
-      roles: ['ADMIN']
+      roles: ['MASTER', 'ADMIN']
     }
   ];
 
   const filteredMenuItems = menuItems.filter(item => 
-    item.roles.includes(user?.role)
+    user?.role === 'MASTER' || item.roles.includes(user?.role)
   );
 
   const SidebarContent = () => (

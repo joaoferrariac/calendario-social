@@ -160,24 +160,34 @@ const useAuthStore = create(
       // Verificar permissões
       hasRole: (role) => {
         const state = get();
+        // MASTER tem todas as permissões
+        if (state.user?.role === 'MASTER') return true;
         return state.user?.role === role;
       },
 
       hasAnyRole: (roles) => {
         const state = get();
+        // MASTER tem todas as permissões
+        if (state.user?.role === 'MASTER') return true;
         return roles.includes(state.user?.role);
       },
 
-      // Verificar se é admin
+      // Verificar se é admin ou master
       isAdmin: () => {
         const state = get();
-        return state.user?.role === 'ADMIN';
+        return ['ADMIN', 'MASTER'].includes(state.user?.role);
+      },
+
+      // Verificar se é master
+      isMaster: () => {
+        const state = get();
+        return state.user?.role === 'MASTER';
       },
 
       // Verificar se pode editar
       canEdit: () => {
         const state = get();
-        return ['ADMIN', 'EDITOR'].includes(state.user?.role);
+        return ['ADMIN', 'EDITOR', 'MASTER'].includes(state.user?.role);
       }
     }),
     {

@@ -55,7 +55,7 @@ const QuickActions = () => {
       
       <div className="grid grid-cols-1 gap-4">
         <Button 
-          onClick={() => navigate('/posts')}
+          onClick={() => navigate('/posts/new')}
           className="h-auto p-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 group"
         >
           <div className="flex items-center w-full">
@@ -225,7 +225,7 @@ const DashboardPage = () => {
           
           <div className="mt-6 lg:mt-0">
             <Button 
-              onClick={() => navigate('/posts')}
+              onClick={() => navigate('/posts/new')}
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg"
             >
               <Plus className="w-4 h-4 mr-2" />

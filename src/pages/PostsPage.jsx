@@ -1,11 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout/Layout';
-import { Plus, Edit, Trash2, Calendar, Image } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, Image, Video, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { postsAPI, handleApiError } from '@/lib/api';
 
+// Função para verificar se é vídeo pela URL ou base64
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  // Detectar por data URL (base64)
+  if (url.startsWith('data:video/')) return true;
+  // Detectar por extensão
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.ogv', '.ogg'];
+  const urlLower = url.toLowerCase();
+  return videoExtensions.some(ext => urlLower.includes(ext));
+};
+
 const PostsPage = () => {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -107,7 +120,10 @@ const PostsPage = () => {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Posts</h1>
-          <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+          <Button 
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+            onClick={() => navigate('/posts/new')}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Novo Post
           </Button>
@@ -117,7 +133,32 @@ const PostsPage = () => {
           {posts.map((post) => (
             <div key={post.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
-                <div className="flex-1">
+                {/* Preview de mídia */}
+                {post.mediaUrl && (
+                  <div className="flex-shrink-0 mr-4">
+                    {isVideoUrl(post.mediaUrl) ? (
+                      <div className="relative w-24 h-24 bg-black rounded-lg overflow-hidden">
+                        <video 
+                          src={post.mediaUrl}
+                          className="w-full h-full object-cover"
+                          muted
+                          preload="metadata"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <Play className="w-8 h-8 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <img 
+                        src={post.mediaUrl} 
+                        alt={post.title}
+                        className="w-24 h-24 object-cover rounded-lg"
+                      />
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-lg font-semibold text-gray-900">{post.title || 'Sem título'}</h2>
                     <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(post.status)}`}>
@@ -135,15 +176,23 @@ const PostsPage = () => {
                     </span>
                     {post.mediaUrl && (
                       <span className="flex items-center gap-1">
-                        <Image className="w-4 h-4" />
-                        Com mídia
+                        {isVideoUrl(post.mediaUrl) ? (
+                          <Video className="w-4 h-4" />
+                        ) : (
+                          <Image className="w-4 h-4" />
+                        )}
+                        {isVideoUrl(post.mediaUrl) ? 'Com vídeo' : 'Com imagem'}
                       </span>
                     )}
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-2 ml-4">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate(`/posts/edit/${post.id}`)}
+                  >
                     <Edit className="w-4 h-4" />
                   </Button>
                   <Button 
@@ -165,7 +214,10 @@ const PostsPage = () => {
             <div className="text-gray-400 text-6xl mb-4">📝</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum post encontrado</h3>
             <p className="text-gray-500 mb-4">Crie seu primeiro post para começar!</p>
-            <Button className="bg-gradient-to-r from-blue-500 to-purple-600">
+            <Button 
+              className="bg-gradient-to-r from-blue-500 to-purple-600"
+              onClick={() => navigate('/posts/new')}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Criar Post
             </Button>

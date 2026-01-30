@@ -12,7 +12,8 @@ import {
   FileImage,
   FileVideo,
   Eye,
-  X
+  X,
+  Play
 } from 'lucide-react';
 import Layout from '@/components/Layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,18 @@ const MediaPage = () => {
   const handleFileUpload = async (event) => {
     const selectedFiles = Array.from(event.target.files);
     if (selectedFiles.length === 0) return;
+
+    // Verificar limite de tamanho (50MB máximo por arquivo)
+    const maxSize = 50 * 1024 * 1024;
+    const oversizedFiles = selectedFiles.filter(f => f.size > maxSize);
+    if (oversizedFiles.length > 0) {
+      toast({
+        title: "Arquivos muito grandes",
+        description: `${oversizedFiles.length} arquivo(s) excedem o limite de 50MB`,
+        variant: "destructive"
+      });
+      return;
+    }
 
     setUploading(true);
     setUploadProgress(0);
@@ -128,8 +141,18 @@ const MediaPage = () => {
            file.originalName?.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const isImage = (file) => file.mimeType?.startsWith('image/');
-  const isVideo = (file) => file.mimeType?.startsWith('video/');
+  // Funções para detectar tipo de mídia (mimeType ou base64)
+  const isImage = (file) => {
+    if (file.mimeType?.startsWith('image/')) return true;
+    if (file.url?.startsWith('data:image/')) return true;
+    return false;
+  };
+  
+  const isVideo = (file) => {
+    if (file.mimeType?.startsWith('video/')) return true;
+    if (file.url?.startsWith('data:video/')) return true;
+    return false;
+  };
 
   return (
     <Layout>
@@ -286,12 +309,18 @@ const MediaPage = () => {
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors">
                   <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                   <p className="text-gray-600 mb-2">Arraste arquivos ou clique para selecionar</p>
-                  <p className="text-sm text-gray-400">Imagens e vídeos suportados</p>
+                  <p className="text-sm text-gray-400">Formatos suportados:</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    <span className="font-medium">Imagens:</span> JPG, PNG, GIF, WebP, SVG
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    <span className="font-medium">Vídeos:</span> MP4, WebM, MOV, AVI, MKV, OGV
+                  </p>
                 </div>
                 <input
                   type="file"
                   multiple
-                  accept="image/*,video/*"
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska,video/ogg"
                   className="hidden"
                   onChange={handleFileUpload}
                   disabled={uploading}
@@ -370,7 +399,7 @@ const MediaPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden"
               >
-                <div className="aspect-square bg-gray-100">
+                <div className="aspect-square bg-gray-100 relative">
                   {isImage(file) ? (
                     <img 
                       src={file.url} 
@@ -378,9 +407,19 @@ const MediaPage = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Video className="w-12 h-12 text-gray-400" />
-                    </div>
+                    <>
+                      <video 
+                        src={file.url}
+                        className="w-full h-full object-cover"
+                        muted
+                        preload="metadata"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                          <Play className="w-6 h-6 text-gray-700 ml-1" />
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
                 
@@ -419,7 +458,7 @@ const MediaPage = () => {
           <div className="bg-white rounded-xl border border-gray-200 divide-y">
             {filteredFiles.map((file) => (
               <div key={file.id} className="flex items-center gap-4 p-4 hover:bg-gray-50">
-                <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
                   {isImage(file) ? (
                     <img 
                       src={file.url} 
@@ -427,9 +466,19 @@ const MediaPage = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Video className="w-8 h-8 text-gray-400" />
-                    </div>
+                    <>
+                      <video 
+                        src={file.url}
+                        className="w-full h-full object-cover"
+                        muted
+                        preload="metadata"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center">
+                          <Play className="w-4 h-4 text-gray-700 ml-0.5" />
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
                 
