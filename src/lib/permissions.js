@@ -33,8 +33,8 @@ const ROLE_HIERARCHY = {
   [ROLES.MASTER]: 4,
 };
 
-// Roles que podem criar clientes
-const CLIENT_CREATOR_ROLES = [ROLES.DESIGNER, ROLES.ADMIN, ROLES.MASTER];
+// Roles que podem criar clientes (UPPERCASE para comparação normalizada)
+const CLIENT_CREATOR_ROLES = [ROLES.EDITOR, ROLES.DESIGNER, ROLES.ADMIN, ROLES.MASTER];
 
 // Roles que podem editar conteúdo
 const CONTENT_EDITOR_ROLES = [ROLES.EDITOR, ROLES.DESIGNER, ROLES.ADMIN, ROLES.MASTER];
