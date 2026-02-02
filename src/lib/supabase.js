@@ -285,44 +285,76 @@ export const db = {
     },
 
     /**
-     * Criar novo usuário
+     * Criar novo usuário via Supabase Auth
      * IMPORTANTE: Só pode ser chamado por DESIGNER/ADMIN/MASTER
      * @param {Object} userData - { name, email, password, role }
      */
     create: async (userData) => {
       try {
-        // 1. Criar usuário no Supabase Auth (admin API ou signUp)
-        // Nota: Para criar sem login automático, use a API admin do Supabase
-        // Por ora, criamos apenas na tabela users (sem auth)
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', userData.email)
-          .single();
+        // 1. Criar usuário no Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: userData.email,
+          password: userData.password,
+          options: {
+            data: {
+              name: userData.name,
+              role: userData.role || 'READER'
+            },
+            // Não fazer login automático (admin criando usuário)
+            emailRedirectTo: undefined
+          }
+        });
         
-        if (existingUser) {
-          return { data: null, error: 'Email já está em uso' };
+        if (authError) {
+          if (authError.message?.includes('already registered')) {
+            return { data: null, error: 'Este email já está cadastrado' };
+          }
+          return { data: null, error: authError.message };
         }
 
-        // 2. Criar registro na tabela users
-        const { data, error } = await supabase
-          .from('users')
-          .insert([{
-            name: userData.name,
-            email: userData.email,
-            role: userData.role || 'READER',
-            // Nota: Em produção, use Supabase Auth para senhas
-            // Este é um placeholder - a senha real deve ir no Auth
-          }])
-          .select()
-          .single();
-        
-        if (error) {
-          return { data: null, error: error.message };
+        if (!authData.user) {
+          return { data: null, error: 'Erro ao criar usuário' };
         }
 
-        return { data, error: null };
+        // 2. A trigger handle_new_user criará o registro na tabela users
+        // Mas vamos garantir que existe e atualizar o role
+        
+        // Aguardar um pouco para a trigger executar
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Buscar ou criar o registro na tabela users
+        let { data: userData2, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+        
+        // Se não existir, criar manualmente
+        if (userError && userError.code === 'PGRST116') {
+          const { data: newUser, error: insertError } = await supabase
+            .from('users')
+            .insert([{
+              id: authData.user.id,
+              email: userData.email,
+              name: userData.name,
+              role: userData.role || 'READER'
+            }])
+            .select()
+            .single();
+          
+          if (insertError) {
+            console.error('Erro ao criar registro de usuário:', insertError);
+          }
+          userData2 = newUser;
+        }
+
+        return { 
+          data: userData2 || authData.user, 
+          error: null,
+          message: 'Usuário criado! Um email de confirmação foi enviado.'
+        };
       } catch (err) {
+        console.error('Erro ao criar usuário:', err);
         return { data: null, error: err.message };
       }
     },
